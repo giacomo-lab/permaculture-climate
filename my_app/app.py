@@ -5,6 +5,7 @@ from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+from dash.dependencies import Input, Output, State
 import pandas as pd
 import xarray as xr
 import cdsapi
@@ -20,23 +21,35 @@ app = dash.Dash(__name__)
 # Define the layout of the app
 app.layout = html.Div([
     dcc.Input(id='location-input', type='text', placeholder='Enter location'),
+    html.Button('Submit', id='submit-button', n_clicks=0),  # Add a button
     dcc.Graph(id='figure-1'),
     dcc.Graph(id='figure-2'),
-    dcc.Graph(id='figure-3')
+    #dcc.Graph(id='figure-3')
 ])
 
 @app.callback(
     [Output('figure-1', 'figure'),
      Output('figure-2', 'figure'),
-     Output('figure-3', 'figure')],
-    [Input('location-input', 'value')]
+     #Output('figure-3', 'figure')
+      ],
+    [Input('submit-button', 'n_clicks')],  # Listen to the button's n_clicks property
+    [State('location-input', 'value')]  # Get the current value of the location-input
 )
-def update_figures(location):
+def update_figures(n_clicks, location):
+    if n_clicks == 0:
+        # If the button hasn't been clicked, return default figures
+        return generate_default_figure(), generate_default_figure()
+
     if location is None or location == '':
         # If no location is provided, return default figures
         return generate_default_figure(), generate_default_figure()
-    
-    lat, lon = get_coordinates(location)
+
+    location = get_coordinates(location)
+    if location is None:
+        # Handle the error: return default figures, show an error message, etc.
+        return generate_default_figure(), generate_default_figure()
+
+    lat, lon = location.latitude, location.longitude
     if lat is None or lon is None:
         # Handle the error: return default figures, show an error message, etc.
         pass
@@ -125,18 +138,17 @@ def get_coordinates(location):
     geolocator = Nominatim(user_agent="permaculture-climate")
     try:
         location = geolocator.geocode(location)
-        lat, lon = location.latitude, location.longitude
         time.sleep(1)
-        return lat, lon
+        return location
     except GeocoderTimedOut:
         print("Error: geocode failed on input %s with message TIMEOUT" % (location))
-        return None, None
+        return None
     except GeocoderUnavailable:
         print("Error: geocode failed on input %s with message SERVICE_UNAVAILABLE" % (location))
-        return None, None
+        return None
     except:
         print("Error: geocode failed on input %s with message UNKNOWN_ERROR" % (location))
-        return None, None
+        return None
     
 
 
