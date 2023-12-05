@@ -52,6 +52,7 @@ def update_figures(n_clicks, location):
     lat, lon = location.latitude, location.longitude
     if lat is None or lon is None:
         # Handle the error: return default figures, show an error message, etc.
+        print("lat or lon is None")
         pass
     else:
         # Perform the API request and generate the figures
