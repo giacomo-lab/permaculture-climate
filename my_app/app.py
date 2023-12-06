@@ -1,15 +1,11 @@
 import dash
-from dash import dcc
-from dash import html
-from dash.dependencies import Input, Output
+from dash import dcc, html
+from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-from dash.dependencies import Input, Output, State
 import pandas as pd
 import xarray as xr
-import cdsapi
-import requests
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 import time
@@ -18,36 +14,36 @@ from datetime import datetime
 # Initialize the Dash app
 app = dash.Dash(__name__)
 
-# Define the layout of the app
 app.layout = html.Div([
     dcc.Input(id='location-input', type='text', placeholder='Enter location'),
     html.Button('Submit', id='submit-button', n_clicks=0),  # Add a button
+    html.Div(id='message'),  # Add a div for messages
     dcc.Graph(id='figure-1'),
     dcc.Graph(id='figure-2'),
     #dcc.Graph(id='figure-3')
 ])
-
 @app.callback(
     [Output('figure-1', 'figure'),
      Output('figure-2', 'figure'),
-     #Output('figure-3', 'figure')
-      ],
+     Output('message', 'children')],  # Add an output for the message
     [Input('submit-button', 'n_clicks')],  # Listen to the button's n_clicks property
     [State('location-input', 'value')]  # Get the current value of the location-input
 )
+
 def update_figures(n_clicks, location):
     if n_clicks == 0:
         # If the button hasn't been clicked, return default figures
-        return generate_default_figure(), generate_default_figure()
+        return generate_default_figure(), generate_default_figure(), 'Choose a location and click Submit'
 
     if location is None or location == '':
         # If no location is provided, return default figures
-        return generate_default_figure(), generate_default_figure()
+        return generate_default_figure(), generate_default_figure(), 'Choose a location and click Submit'
 
     location = get_coordinates(location)
     if location is None:
         # Handle the error: return default figures, show an error message, etc.
-        return generate_default_figure(), generate_default_figure()
+        return generate_default_figure(), generate_default_figure(), ''
+    
 
     lat, lon = location.latitude, location.longitude
     if lat is None or lon is None:
@@ -55,85 +51,59 @@ def update_figures(n_clicks, location):
         print("lat or lon is None")
         pass
     else:
-        # Perform the API request and generate the figures
         pass
 
-    # select the years you want to download:
-    start_year = 1992
-    end_year = 2022
-    year_range = [i for i in range(start_year, end_year + 1)]
+    filename = "my_app/data/download.grib"
 
-    #API request for era5 data
-    c = cdsapi.Client()
-    try:
-        data = c.retrieve("reanalysis-era5-single-levels-monthly-means",
-        {"format": "grib",
-         "product_type": "monthly_averaged_reanalysis_by_hour_of_day",
-         "variable": ['10m_u_component_of_wind', '10m_v_component_of_wind', 
-                    '2m_temperature',
-                    'total_cloud_cover', 
-                    'total_precipitation',
-                    ],
-        "area": [location.latitude + 1,    
-                 location.longitude - 1, 
-                 location.latitude - 1, 
-                 location.longitude + 1],  # North, West, South, East. 
-        "year": year_range,
-        "month": ['01', '02', '03',
-               '04', '05', '06',
-               '07', '08', '09',
-               '10', '11', '12'],
-        "time": ["00:00","01:00","02:00","03:00","04:00","05:00",
-                 "06:00","07:00","08:00","09:00","10:00","11:00",
-                 "12:00", "13:00","14:00","15:00","16:00","17:00",
-                 "18:00","19:00","20:00","21:00","22:00","23:00"]
-        })
+    # List of variables to load
+    variables = ['2t','10v','10u','tp','tcc']
 
-        # Get the location of the file to download
-        url = data.location
-
-        # Download the file
-        response = requests.get(url)
-
-        # Check if the request was successful
-        response.raise_for_status()
-
-    except requests.exceptions.HTTPError as errh:
-        print ("HTTP Error:",errh)
-    except requests.exceptions.ConnectionError as errc:
-        print ("Error Connecting:",errc)
-    except requests.exceptions.Timeout as errt:
-        print ("Timeout Error:",errt)
-    except requests.exceptions.RequestException as err:
-        print ("Something went wrong with the request:",err)
-
-    else:
-        # If the request was successful, write the file
-        filename = 'download.grib'
-        with open(filename, 'wb') as f:
-            f.write(response.content)
-
-        # Open the GRIB file for each variable
-    variables = ['Total cloud cover', '10 metre V wind component', 
-                 '2 metre temperature', 'Total precipitation', '10 metre U wind component']
+    # Dictionary to hold the datasets
     datasets = {}
+
+    show_message(location)
+    # Open the GRIB file for each variable using the short name parameter
+    print("Opening GRIB file...")
+    
     for var in variables:
-        ds = xr.open_dataset(filename, engine='cfgrib', backend_kwargs={'filter_by_keys': {'parameterName': var}})
+        ds = xr.open_dataset(filename, engine='cfgrib', 
+                             backend_kwargs={'filter_by_keys': {'shortName': var}})
+        ds = ds.sel(latitude=slice(lat + 1, lat - 1), longitude=slice(lon - 1, lon + 1))
         datasets[var] = ds
+    
+    import dask
 
-    # Calculate the climatology and average over latitude and longitude
-    precip_climatology = datasets['Total precipitation']['tp'].groupby('time.month').mean(['time', 'latitude', 'longitude', 'step'])*1000
-    avg_temp = datasets['2 metre temperature']['t2m'].groupby('time.month').mean(['time', 'latitude', 'longitude'])-273.15
-    max_temp = datasets['2 metre temperature']['t2m'].groupby('time.month').max(['time', 'latitude', 'longitude'])-273.15
-    min_temp = datasets['2 metre temperature']['t2m'].groupby('time.month').min(['time', 'latitude', 'longitude'])-273.15
+    # Chunk the data
+    datasets['tp']['tp'] = datasets['tp']['tp'].chunk({'time': -1})
+    datasets['2t']['t2m'] = datasets['2t']['t2m'].chunk({'time': -1})
 
+    with dask.config.set(scheduler='threads'):  # or dask.config.set(scheduler='processes') for multiprocessing
+        print("Calculating climatology ==")
+        # Calculate the climatology and average over latitude and longitude
+        precip_climatology = datasets['tp']['tp'].groupby('time.month').mean(['time', 'latitude', 'longitude', 'step']).compute()*1000
+        print("Calculating climatology ====")
+        avg_temp = datasets['2t']['t2m'].groupby('time.month').mean(['time', 'latitude', 'longitude']).compute()-273.15
+        print("Calculating climatology ======")
+        max_temp = datasets['2t']['t2m'].groupby('time.month').max(['time', 'latitude', 'longitude']).compute()-273.15
+        print("Calculating climatology ========")
+        min_temp = datasets['2t']['t2m'].groupby('time.month').min(['time', 'latitude', 'longitude']).compute()-273.15
+        print("Climatology calculated")
+
+    # Convert Dask DataFrames back to pandas DataFrames
+    precip_climatology = precip_climatology.compute()
+    avg_temp = avg_temp.compute()
+    max_temp = max_temp.compute()
+    min_temp = min_temp.compute()
     # Generate the figures based on the data
+    message = 'Generating figures...'
     figure_1 = generate_figure_1(precip_climatology, avg_temp)
     figure_2 = generate_figure_2(avg_temp, max_temp, min_temp)
-    #figure_3 = generate_figure_3(filename)
 
-    return figure_1, figure_2
+    return figure_1, figure_2, message
 
+
+def show_message(location):
+    return(f'Fetching data for {location}...')
 
 def get_coordinates(location):
     geolocator = Nominatim(user_agent="permaculture-climate")
@@ -151,7 +121,6 @@ def get_coordinates(location):
         print("Error: geocode failed on input %s with message UNKNOWN_ERROR" % (location))
         return None
     
-
 
 def generate_figure_1(precip_climatology, avg_temp):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
