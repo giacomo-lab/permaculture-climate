@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install the latest version of ecCodes
