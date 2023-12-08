@@ -2,3 +2,4 @@
 *.grib
 *.idx
 *.zip
+*/prediction_data
