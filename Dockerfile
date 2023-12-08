@@ -21,8 +21,5 @@ RUN apt-get update && apt-get install -y \
 # Install cfgrib
 RUN pip install cfgrib
 
-# Make port 80 available to the world outside this container
-EXPOSE 80
-
 # Run app.py when the container launches
-CMD ["python", "src/app.py"]
+CMD gunicorn --bind :$PORT src.app:server
