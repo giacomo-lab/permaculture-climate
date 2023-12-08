@@ -15,17 +15,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
     cmake \
+    libeccodes-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Download and install the latest version of ecCodes
-RUN wget https://github.com/ecmwf/eccodes/archive/refs/tags/2.23.0.tar.gz \
-    && tar xzf 2.23.0.tar.gz \
-    && cd eccodes-2.23.0-Source \
-    && mkdir build \
-    && cd build \
-    && cmake .. \
-    && make \
-    && make install
 
 # Install cfgrib
 RUN pip install cfgrib
