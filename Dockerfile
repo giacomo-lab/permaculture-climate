@@ -7,6 +7,9 @@ WORKDIR /src
 # Add the current directory contents into the container at /src
 ADD . /src
 
+# Update pip
+RUN pip install --upgrade pip
+
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
