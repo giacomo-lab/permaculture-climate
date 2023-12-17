@@ -65,7 +65,7 @@ def update_figures(n_clicks, location):
     else:
         pass
 
-    filename = "data/download.grib"
+    filename = "src/data/download.grib"
 
     # List of variables to load
     variables = ['2t','10v','10u','tp','tcc']
