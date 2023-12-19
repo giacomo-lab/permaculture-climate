@@ -3,3 +3,4 @@
 *.idx
 *.zip
 prediction_data/
+*.DS_Store
