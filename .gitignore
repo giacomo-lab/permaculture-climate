@@ -4,3 +4,6 @@
 *.zip
 prediction_data/
 *.DS_Store
+*.grib
+*.idx
+*.zip
