@@ -4,4 +4,5 @@
 *.zip
 prediction_data/
 *.DS_Store
-*.ini
+*.grib
+*.idx
