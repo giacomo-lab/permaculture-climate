@@ -15,33 +15,41 @@ import numpy as np
 import dask
 import os
 from datetime import datetime
-
+#TODO: be awesome
 # Initialize the Dash app
 app = dash.Dash(__name__)
 server = app.server
 
-
+#define app structure
 app.layout = html.Div([
     html.Div([
         dcc.Input(id='location-input', type='text', placeholder='Enter location'),
         html.Button('Submit', id='submit-button', n_clicks=0),  # Add a button
     ], style={'display': 'flex', 'justify-content': 'center'}),
+
     html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '0 auto'}),  # Add a div for messages
-    html.Div([
-        dcc.Graph(id='figure-1', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-        dcc.Graph(id='figure-2', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-        dcc.Graph(id='figure-3', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
-    ], style={'display': 'flex', 'flex-direction': 'column', 'align-items': 'center'})
+    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '0 auto'}), #dynamic summary
+    html.Div([dcc.Graph(id='figure-1', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+              dcc.Graph(id='figure-2', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+              dcc.Graph(id='figure-3', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
+              dcc.Graph(id='figure-4', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
+              dcc.Graph(id='figure-5', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
+              ], 
+              style={'display': 'flex', 'flex-direction': 'column', 'align-items': 'center'}
+              )
 ])
 @app.callback(
     [Output('figure-1', 'figure'),
      Output('figure-2', 'figure'),
      Output('figure-3', 'figure'),
+     Output('figure-4', 'figure'),
+     Output('figure-5', 'figure'),
      Output('message', 'children')],  # Add an output for the message
     [Input('submit-button', 'n_clicks')],  # Listen to the button's n_clicks property
     [State('location-input', 'value')]  # Get the current value of the location-input
 )
-
+#TODO: improve default figures looks
+#TODO: imprvoe the error handling with more specific messages
 def update_figures(n_clicks, location):
     if n_clicks == 0:
         # If the button hasn't been clicked, return default figures
@@ -52,16 +60,15 @@ def update_figures(n_clicks, location):
         return generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Choose a location and click Submit'
 
     location = get_coordinates(location)
+
     if location is None:
         # Handle the error: return default figures, show an error message, etc.
         return generate_default_figure(), generate_default_figure(), generate_default_figure(), ''
     
-
     lat, lon = location.latitude, location.longitude
     if lat is None or lon is None:
         # Handle the error: return default figures, show an error message, etc.
-        print("lat or lon is None")
-        pass
+        return generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Lat or Lon is None'
     else:
         pass
 
@@ -75,6 +82,7 @@ def update_figures(n_clicks, location):
 
     show_message(location)
     # Open the GRIB file for each variable using the short name parameter
+    #TODO: make this (or similar) messages appear in the dashboard
     print("Opening GRIB file...")
     
     for var in variables:
@@ -83,39 +91,99 @@ def update_figures(n_clicks, location):
         ds = ds.sel(latitude=slice(lat + 1, lat - 1), longitude=slice(lon - 1, lon + 1))
         datasets[var] = ds
 
-    # Chunk the data
-    datasets['tp']['tp'] = datasets['tp']['tp'].chunk({'time': -1})
-    datasets['2t']['t2m'] = datasets['2t']['t2m'].chunk({'time': -1})
-    datasets['10u']['u10'] = datasets['10u']['u10'].chunk({'time': -1})
-    datasets['10v']['v10'] = datasets['10v']['v10'].chunk({'time': -1})
+#Calculate climatology and perform units conversion. Parallelized the process using dask.
+#TODO: download updated data with RH
+#TODO: download prediction data
+# Chunk the data using dask
+    chunksize = 600
 
-    with dask.config.set(scheduler='threads'):  # or dask.config.set(scheduler='processes') for multiprocessing
-        print("Calculating climatology ==")
-        # Calculate the climatology and average over latitude and longitude
-        precip_climatology = datasets['tp']['tp'].groupby('time.month').mean(['time', 'latitude', 'longitude', 'step']).compute()*1000
-        print("Calculating climatology ====")
-        avg_temp = datasets['2t']['t2m'].groupby('time.month').mean(['time', 'latitude', 'longitude']).compute()-273.15
-        print("Calculating climatology ======")
-        max_temp = datasets['2t']['t2m'].groupby('time.month').max(['time', 'latitude', 'longitude']).compute()-273.15
-        print("Calculating climatology ========")
-        min_temp = datasets['2t']['t2m'].groupby('time.month').min(['time', 'latitude', 'longitude']).compute()-273.15
-        print("Calculating climatology ==========")
+    datasets['tp']['tp'] = datasets['tp']['tp'].chunk({'time': chunksize})
+    datasets['2t']['t2m'] = datasets['2t']['t2m'].chunk({'time': chunksize})
+    datasets['rh']['rh'] = datasets['rh']['rh'].chunk({'time': chunksize}) 
+    datasets['10u']['u10'] = datasets['10u']['u10'].chunk({'time': chunksize})
+    datasets['10v']['v10'] = datasets['10v']['v10'].chunk({'time': chunksize})
+    datasets['tcc']['tcc'] = datasets['tcc']['tcc'].chunk({'time': chunksize})
+
+    with dask.config.set(scheduler='threads'):  
+
+        print("Calculating precipitation")
+
+        # Average precipitation. Converting from m per hour to mm per month
+        days_per_month = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        avg_prec = datasets['tp']['tp'].groupby('time.month').mean(['time', 'latitude', 'longitude', 'step'])*1000 * 24 * days_per_month
+
+        print("Calculating temperature")
+
+        #average temperature. Convert from K to C
+        mean_spatial_temp = datasets['2t']['t2m'].mean(['latitude', 'longitude'])-273.15
+        avg_temp = mean_spatial_temp.groupby('time.month').mean(['time'])
+        mean_spatial_temp['month_year'] = mean_spatial_temp['time'].dt.strftime('%Y-%m')
+
+        #Calculate average max temp
+        max_monthly_temp = mean_spatial_temp.groupby('month_year').max()
+        max_monthly_temp['month'] = max_monthly_temp['month_year'].str.slice(start=5, stop=7).astype(int)
+        mean_max_temp = max_monthly_temp.groupby('month').mean()
+
+        #calculate average min temperature
+        min_monthly_temp = mean_spatial_temp.groupby('month_year').min()
+        min_monthly_temp['month'] = min_monthly_temp['month_year'].str.slice(start=5, stop=7).astype(int)
+        mean_min_temp = min_monthly_temp.groupby('month').mean() 
+
+        print("Calculating relative humidity")
+
+        #relative humidity
+        mean_spatial_rh = datasets['rh']['rh'].mean(['latitude', 'longitude'])
+        avg_rh = mean_spatial_rh.groupby('time.month').mean(['time'])
+        mean_spatial_rh['month_year'] = mean_spatial_rh['time'].dt.strftime('%Y-%m')
+
+        #calculate average max rh
+        max_monthly_rh = mean_spatial_rh.groupby('month_year').max()
+        max_monthly_rh['month'] = max_monthly_rh['month_year'].str.slice(start=5, stop=7).astype(int)
+        mean_max_rh = max_monthly_rh.groupby('month').mean()
+
+        #calculate average min rh
+        min_monthly_rh = mean_spatial_rh.groupby('month_year').min()
+        min_monthly_rh['month'] = min_monthly_rh['month_year'].str.slice(start=5, stop=7).astype(int)
+        mean_min_rh = min_monthly_rh.groupby('month').mean()
+
+        print("Calculating winds")
+
+        #Average winds
         avg_u = datasets['10u']['u10'].groupby('time.month').mean(['latitude', 'longitude'])
         avg_v = datasets['10v']['v10'].groupby('time.month').mean(['latitude', 'longitude'])
+
+        print("Calculating total cloud cover")
+
+        #Get rid of the latitude and longitude dimensions by averaging the data
+        avg_tcc_spatial = datasets['tcc']['tcc'].mean(['longitude', 'latitude'])
+
+        #Now average the data of each hour of each month across the 30 years of data. We end up with 288 data points, representing 24 h per month
+        month_hour_grouped = avg_tcc_spatial.groupby(avg_tcc_spatial['time.month'] * 100 + avg_tcc_spatial['time.hour'])
+        avg_tcc = month_hour_grouped.mean(dim='time')
+
         print("Climatology calculated")
-
-    # Convert Dask DataFrames back to pandas DataFrames
-    precip_climatology = precip_climatology.compute()
+    
+    
+    #Perfom the calcultaions set above and return the results as a pandas dataframe
+    avg_prec = avg_prec.compute()
     avg_temp = avg_temp.compute()
-    max_temp = max_temp.compute()
-    min_temp = min_temp.compute()
-    # Generate the figures based on the data
+    mean_max_temp = mean_max_temp.compute()
+    mean_min_temp = mean_min_temp.compute()
+    avg_rh = avg_rh.compute()
+    mean_max_rh = mean_max_rh.compute()
+    mean_min_rh = mean_min_rh.compute()
+    avg_u = avg_u.compute()
+    avg_v = avg_v.compute()
+    avg_tcc = avg_tcc.compute()
+    
+    #FIXME: check the inputs of the functions
     message = "figure generated successfully "
-    figure_1 = generate_figure_1(precip_climatology, avg_temp)
-    figure_2 = generate_figure_2(avg_temp, max_temp, min_temp)
-    figure_3 = generate_figure_3(avg_u, avg_v)
-
-    return figure_1, figure_2, figure_3, message
+    temp_and_prec = generate_fig_temp_and_prec(avg_prec, avg_temp)
+    range_temp = generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp)
+    range_rh = generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh)
+    cloud_cover = generate_fig_cloud_cover()
+    wind_rose = generate_fig_wind_rose(avg_u, avg_v)
+    return temp_and_prec, range_temp, range_rh, cloud_cover, wind_rose, message
 
 #======================
 def show_message(location):
@@ -138,126 +206,99 @@ def get_coordinates(location):
         return None
     
 
-def generate_figure_1(precip_climatology, avg_temp):
+def generate_fig_temp_and_prec(avg_prec, avg_temp):
+
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(
-        go.Bar(x=precip_climatology.month, y=precip_climatology, name='Precipitation', opacity=0.5),
-        secondary_y=False,
-    )
-    fig.add_trace(
-        go.Scatter(x=avg_temp.month, y=avg_temp, mode='lines', name='Temperature'),
-        secondary_y=True,
-    )
-    fig.update_layout(
-        title = 'Average Temperature and Precipitation',
-        yaxis=dict(title='Precipitation (mm)'),
-        yaxis2=dict(title='Temperature (°C)', overlaying='y', side='right'),
-        xaxis=dict(
-            title='Month',
-            tickmode='array',
-            tickvals=avg_temp.month,
-            ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            tickangle=-45
-        ),
-        template='simple_white'
-    )
+    # Add a bar chart for precipitation and forcasted precipitation to the secondary y-axis
+    bar_prec = go.Bar(x=avg_prec.month, 
+                      y=avg_prec, 
+                      name='Precipitation', 
+                      opacity=0.75, 
+                      marker_color = 'blue', 
+                      hovertemplate=('%{x}: %{y:.0f} mm <extra></extra>')
+                      )
+
+    bar_prec_forecast = go.Bar(x=proj_avg_prec.month, 
+                                y=proj_avg_prec, 
+                                name='Forcasted precipitation', 
+                                marker_color = 'lightblue',
+                                hovertemplate=('%{x}: %{y:.0f} mm <extra></extra>')
+                                )
+
+    fig.add_trace(bar_prec)
+    fig.add_trace(bar_prec_forecast)
+
+    # Add a line chart for temperature to the primary y-axis
+    fig.add_trace(go.Scatter(x=avg_temp.month, 
+                             y=avg_temp, 
+                             mode='lines', 
+                             name='Temperature', 
+                             opacity=0.85,
+                             line=dict(color='red', width=3),  # Make the line thicker
+                             hovertemplate=('%{x}: %{y:.0f} °C <extra></extra>')
+                             ),
+                    secondary_y=True
+                    )
+
+    # Add forecasted temperature
+    fig.add_trace(go.Scatter(x=proj_avg_temp.month, 
+                             y=proj_avg_temp, 
+                             mode='lines', 
+                             opacity=0.85,
+                             name='Forcasted temperature', 
+                             line=dict(color='orange', width=3),  # Make the line thicker
+                             hovertemplate=('%{x}: %{y:.0f} °C <extra></extra>')
+                             ),   
+                secondary_y=True,
+                )
+    
+    # Set the layout to have two y-axes
+    fig.update_layout(title='Temperature and precipitation (past and forcasted)',
+                      yaxis=dict(title='Precipitation (mm)', tickfont=dict(size=14)),  # Make the tick labels bigger
+                      yaxis2=dict(title='Temperature (°C)', overlaying='y', side='right', tickfont=dict(size=14)),  # Make the tick labels bigger
+                      xaxis=dict(tickmode='array',
+                                 tickvals=avg_temp.month,
+                                 ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                                 tickangle=-45,
+                                 tickfont=dict(size=14)  # Make the tick labels bigger
+                                 ),
+                        template='simple_white',
+                        width=1075,  # Set the figure width
+                        height=600,  # Set the figure height
+                        margin=dict(b=200) # Adjust the bottom margin to create more space below the figure
+                        )
+
+    # Add a text on the bottom of the figure
+    fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past {len(year_range)} years and the 
+                       <br>forcasted values for the next {len(year_range_forecast)} years. 
+                       <br>Blue and lightblue bars represent precipitation, red and orange lines represents temperature.
+                       <br>Hover over the bars and lines to see the values. Click on the legend to hide/show the data.""",
+                        xref='paper', yref='paper',
+                        x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
+                        showarrow=False,
+                        align='left',  # Set align to 'left'
+                        font=dict(size=12, color='black'),
+                        )
+    return fig
+#FIXME: add image temp range
+def generate_fig_range_temp(avg_temp, max_temp, min_temp):
+
+    return fig
+#FIXME: add image rh range
+def generate_fig_range_rh(avg_u, avg_v):
+   
+
     return fig
 
+#FIXME: add image cloud cover
+def generate_fig_cloud_cover(avg_u, avg_v):
+   
 
-def generate_figure_2(avg_temp, max_temp, min_temp):
-    # Create a DataFrame from the DataArrays
-    df = pd.DataFrame({
-        'month': avg_temp.month.values,
-        'avg_temp': avg_temp.values,
-        'max_temp': max_temp.values,
-        'min_temp': min_temp.values
-    })
-
-    # Create a line chart for average temperature
-    fig = px.line(df, x='month', y='avg_temp', title='Min and max temperature')
-
-    # Add a line chart for max temperature
-    fig.add_trace(go.Scatter(x=df['month'], y=df['max_temp'], mode='lines', name='Max Temperature', line_color='red'))
-
-    # Add a line chart for min temperature
-    fig.add_trace(go.Scatter(x=df['month'], y=df['min_temp'], mode='lines', name='Min Temperature', line_color='red', fill='tonexty'))
-
-    # Add a line chart for min temperature
-    fig.add_hline(y=0, opacity=1, line_width=2, line_dash='dash', line_color='blue', annotation_text='freezing', annotation_position='top')
-
-    # Set the layout
-    fig.update_layout(
-        yaxis=dict(title='Temperature (°C)'),
-        xaxis=dict(
-            title='Month',
-            tickmode='array',
-            tickvals=df['month'],
-            ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            tickangle=-45
-        ),
-        template='simple_white'
-    )
     return fig
 
-def generate_figure_3(avg_u, avg_v):
-    # Create a DataFrame from the DataArrays
-  # Calculate wind speed
-    wind_speed = np.sqrt(avg_u**2 + avg_v**2)
-    #convert to km/h
-    wind_speed = wind_speed*3.6
-
-    # Calculate wind direction (see: https://confluence.ecmwf.int/pages/viewpage.action?pageId=133262398)
-    wind_direction = np.mod(180 + np.arctan2(avg_u, avg_v) * (180 / np.pi), 360)
-
-    #prepare the data for the wind rose
-    df = pd.DataFrame({'speed': wind_speed, 'direction': wind_direction})
-
-    bins_dir = np.linspace(0, 360, 9)
-    labels_dir = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-    bins_speed = np.arange(0, df['speed'].max() + 1.1,  np.round(np.ceil(max(wind_speed.values))/5))
-    df['direction'] = pd.cut(df['direction'], bins=bins_dir, labels = labels_dir)
-    df['speed'] = pd.cut(df['speed'], bins=bins_speed)
-
-    # Calculate frequencies
-    frequency_df = df.groupby(['direction', 'speed']).size().reset_index(name='frequency')
-
-    # Calculate total frequency
-    total_frequency = frequency_df['frequency'].sum()
-
-    # Convert frequency to proportion
-    frequency_df['frequency'] = frequency_df['frequency'] / total_frequency
-
-    # Get the number of unique 'speed' categories
-    num_categories = len(frequency_df['speed'].unique())
-
-    # Sort the 'speed' categories
-    sorted_categories = frequency_df['speed'].sort_values().unique()
-
-    # Create a line chart for average temperature
-    # Create a custom color scale with the same number of colors as there are categories
-    custom_color_scale = plt.cm.viridis_r(np.linspace(0, 1, num_categories))
-
-    # Convert the color scale to a list of hex color strings
-    custom_color_scale = [matplotlib.colors.rgb2hex(color) for color in custom_color_scale]
-
-    # Define a color map for the sorted 'speed' categories
-    color_map = {category: color for category, color in zip(sorted_categories, custom_color_scale)}
-
-    # Create the wind rose chart
-    fig = px.bar_polar(frequency_df, 
-                       r='frequency', 
-                       theta='direction', 
-                       color='speed', 
-                       template='simple_white', 
-                       color_discrete_map=color_map, labels={"speed": "Speed [km/h]"})  # Use the color map
-
-    # Update the layout to make it rectangular
-    fig.update_layout(
-        width=1000,  # Set the width to 00 pixels
-        height=1000,  # Set the height to 1000 pixels
-        polar_radialaxis_showgrid=True,  # Show radial grid
-        polar_angularaxis_showgrid=True  # Show angular grid
-    )
+#FIXME: add image wind rose
+def generate_fig_wind_rose(avg_u, avg_v):
+   
 
     return fig
 
@@ -281,5 +322,5 @@ def generate_default_figure():
     return fig
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run_server(host='0.0.0.0', port=port, debug=True)
+    #port = int(os.environ.get("PORT", 10000))
+    app.run_server(debug=True)
