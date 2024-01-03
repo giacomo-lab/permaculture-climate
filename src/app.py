@@ -15,6 +15,10 @@ import numpy as np
 import dask
 import os
 from datetime import datetime
+from figures import *
+from calculations import *
+
+
 #TODO: be awesome
 # Initialize the Dash app
 app = dash.Dash(__name__)
@@ -29,46 +33,91 @@ app.layout = html.Div([
 
     html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '0 auto'}),  # Add a div for messages
     html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '0 auto'}), #dynamic summary
-    html.Div([dcc.Graph(id='figure-1', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-              dcc.Graph(id='figure-2', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-              dcc.Graph(id='figure-3', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
-              dcc.Graph(id='figure-4', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
-              dcc.Graph(id='figure-5', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
+    html.Div([dcc.Graph(id='fig_temp_and_prec', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+              dcc.Graph(id='fig_range_temp', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+              dcc.Graph(id='fig_range_rh', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
+              dcc.Graph(id='fig_tcc', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
+              dcc.Graph(id='fig_wind', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
               ], 
               style={'display': 'flex', 'flex-direction': 'column', 'align-items': 'center'}
               )
 ])
 @app.callback(
-    [Output('figure-1', 'figure'),
-     Output('figure-2', 'figure'),
-     Output('figure-3', 'figure'),
-     Output('figure-4', 'figure'),
-     Output('figure-5', 'figure'),
+    [Output('fig_temp_and_prec', 'figure'),
+     Output('fig_range_temp', 'figure'),
+     Output('fig-range_rh', 'figure'),
+     Output('fig_tcc', 'figure'),
+     Output('fig_wind', 'figure'),
      Output('message', 'children')],  # Add an output for the message
     [Input('submit-button', 'n_clicks')],  # Listen to the button's n_clicks property
     [State('location-input', 'value')]  # Get the current value of the location-input
 )
 #TODO: improve default figures looks
 #TODO: imprvoe the error handling with more specific messages
+
+#======================
+def show_message(location):
+    return(f'Fetching data for {location}...')
+
+def get_coordinates(location):
+    geolocator = Nominatim(user_agent="permaculture-climate")
+    try:
+        location = geolocator.geocode(location)
+        time.sleep(1)
+        return location
+    except GeocoderTimedOut:
+        print("Error: geocode failed on input %s with message TIMEOUT" % (location))
+        return None
+    except GeocoderUnavailable:
+        print("Error: geocode failed on input %s with message SERVICE_UNAVAILABLE" % (location))
+        return None
+    except:
+        print("Error: geocode failed on input %s with message UNKNOWN_ERROR" % (location))
+        return None
+    
+
+
+
+
+def generate_default_figure():
+    fig = go.Figure()
+
+    fig.add_annotation(
+        x=0.5,
+        y=0.5,
+        text="Input your location",
+        showarrow=False,
+        font_size=16
+    )
+
+    fig.update_layout(
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        template='simple_white'
+    )
+
+    return fig
+
+
 def update_figures(n_clicks, location):
     if n_clicks == 0:
         # If the button hasn't been clicked, return default figures
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Choose a location and click Submit'
+        return generate_default_figure(), 'Choose a location and click Submit'
 
     if location is None or location == '':
         # If no location is provided, return default figures
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Choose a location and click Submit'
+        return generate_default_figure(), 'Choose a location and click Submit'
 
     location = get_coordinates(location)
 
     if location is None:
         # Handle the error: return default figures, show an error message, etc.
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), ''
+        return generate_default_figure(),''
     
     lat, lon = location.latitude, location.longitude
     if lat is None or lon is None:
         # Handle the error: return default figures, show an error message, etc.
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Lat or Lon is None'
+        return generate_default_figure(), 'Lat or Lon is None'
     else:
         pass
 
@@ -176,150 +225,17 @@ def update_figures(n_clicks, location):
     avg_v = avg_v.compute()
     avg_tcc = avg_tcc.compute()
     
+#TODO separare, fare due funzioni, una prediction und past data,
+# poi unaltra funzione per sta roba qua sotto, solo che prende na lista assurda di input variables
     #FIXME: check the inputs of the functions
     message = "figure generated successfully "
-    temp_and_prec = generate_fig_temp_and_prec(avg_prec, avg_temp)
+    temp_and_prec = generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
     range_temp = generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp)
     range_rh = generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh)
-    cloud_cover = generate_fig_cloud_cover()
-    wind_rose = generate_fig_wind_rose(avg_u, avg_v)
+    cloud_cover = generate_fig_cloud_cover(location, avg_tcc)
+    wind_rose = generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v )
     return temp_and_prec, range_temp, range_rh, cloud_cover, wind_rose, message
 
-#======================
-def show_message(location):
-    return(f'Fetching data for {location}...')
-
-def get_coordinates(location):
-    geolocator = Nominatim(user_agent="permaculture-climate")
-    try:
-        location = geolocator.geocode(location)
-        time.sleep(1)
-        return location
-    except GeocoderTimedOut:
-        print("Error: geocode failed on input %s with message TIMEOUT" % (location))
-        return None
-    except GeocoderUnavailable:
-        print("Error: geocode failed on input %s with message SERVICE_UNAVAILABLE" % (location))
-        return None
-    except:
-        print("Error: geocode failed on input %s with message UNKNOWN_ERROR" % (location))
-        return None
-    
-
-def generate_fig_temp_and_prec(avg_prec, avg_temp):
-
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    # Add a bar chart for precipitation and forcasted precipitation to the secondary y-axis
-    bar_prec = go.Bar(x=avg_prec.month, 
-                      y=avg_prec, 
-                      name='Precipitation', 
-                      opacity=0.75, 
-                      marker_color = 'blue', 
-                      hovertemplate=('%{x}: %{y:.0f} mm <extra></extra>')
-                      )
-
-    bar_prec_forecast = go.Bar(x=proj_avg_prec.month, 
-                                y=proj_avg_prec, 
-                                name='Forcasted precipitation', 
-                                marker_color = 'lightblue',
-                                hovertemplate=('%{x}: %{y:.0f} mm <extra></extra>')
-                                )
-
-    fig.add_trace(bar_prec)
-    fig.add_trace(bar_prec_forecast)
-
-    # Add a line chart for temperature to the primary y-axis
-    fig.add_trace(go.Scatter(x=avg_temp.month, 
-                             y=avg_temp, 
-                             mode='lines', 
-                             name='Temperature', 
-                             opacity=0.85,
-                             line=dict(color='red', width=3),  # Make the line thicker
-                             hovertemplate=('%{x}: %{y:.0f} °C <extra></extra>')
-                             ),
-                    secondary_y=True
-                    )
-
-    # Add forecasted temperature
-    fig.add_trace(go.Scatter(x=proj_avg_temp.month, 
-                             y=proj_avg_temp, 
-                             mode='lines', 
-                             opacity=0.85,
-                             name='Forcasted temperature', 
-                             line=dict(color='orange', width=3),  # Make the line thicker
-                             hovertemplate=('%{x}: %{y:.0f} °C <extra></extra>')
-                             ),   
-                secondary_y=True,
-                )
-    
-    # Set the layout to have two y-axes
-    fig.update_layout(title='Temperature and precipitation (past and forcasted)',
-                      yaxis=dict(title='Precipitation (mm)', tickfont=dict(size=14)),  # Make the tick labels bigger
-                      yaxis2=dict(title='Temperature (°C)', overlaying='y', side='right', tickfont=dict(size=14)),  # Make the tick labels bigger
-                      xaxis=dict(tickmode='array',
-                                 tickvals=avg_temp.month,
-                                 ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                                 tickangle=-45,
-                                 tickfont=dict(size=14)  # Make the tick labels bigger
-                                 ),
-                        template='simple_white',
-                        width=1075,  # Set the figure width
-                        height=600,  # Set the figure height
-                        margin=dict(b=200) # Adjust the bottom margin to create more space below the figure
-                        )
-
-    # Add a text on the bottom of the figure
-    fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past {len(year_range)} years and the 
-                       <br>forcasted values for the next {len(year_range_forecast)} years. 
-                       <br>Blue and lightblue bars represent precipitation, red and orange lines represents temperature.
-                       <br>Hover over the bars and lines to see the values. Click on the legend to hide/show the data.""",
-                        xref='paper', yref='paper',
-                        x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-                        showarrow=False,
-                        align='left',  # Set align to 'left'
-                        font=dict(size=12, color='black'),
-                        )
-    return fig
-#FIXME: add image temp range
-def generate_fig_range_temp(avg_temp, max_temp, min_temp):
-
-    return fig
-#FIXME: add image rh range
-def generate_fig_range_rh(avg_u, avg_v):
-   
-
-    return fig
-
-#FIXME: add image cloud cover
-def generate_fig_cloud_cover(avg_u, avg_v):
-   
-
-    return fig
-
-#FIXME: add image wind rose
-def generate_fig_wind_rose(avg_u, avg_v):
-   
-
-    return fig
-
-def generate_default_figure():
-    fig = go.Figure()
-
-    fig.add_annotation(
-        x=0.5,
-        y=0.5,
-        text="Input your location",
-        showarrow=False,
-        font_size=16
-    )
-
-    fig.update_layout(
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        template='simple_white'
-    )
-
-    return fig
 
 if __name__ == '__main__':
     #port = int(os.environ.get("PORT", 10000))
