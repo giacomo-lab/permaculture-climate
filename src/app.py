@@ -35,8 +35,8 @@ app.layout = html.Div([
     html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '0 auto'}), #dynamic summary
     html.Div([dcc.Graph(id='fig_temp_and_prec', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
               dcc.Graph(id='fig_range_temp', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-              dcc.Graph(id='fig_range_rh', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
-              dcc.Graph(id='fig_tcc', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
+              dcc.Graph(id='fig_range_rh', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+              dcc.Graph(id='fig_tcc', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
               dcc.Graph(id='fig_wind', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
               ], 
               style={'display': 'flex', 'flex-direction': 'column', 'align-items': 'center'}
@@ -64,7 +64,11 @@ def get_coordinates(location):
     try:
         location = geolocator.geocode(location)
         time.sleep(1)
-        return location
+            if location.latitude is None or location.longitude is None:
+                print('lat and lon are None')
+                return None
+            else: 
+                return location
     except GeocoderTimedOut:
         print("Error: geocode failed on input %s with message TIMEOUT" % (location))
         return None
@@ -74,11 +78,11 @@ def get_coordinates(location):
     except:
         print("Error: geocode failed on input %s with message UNKNOWN_ERROR" % (location))
         return None
-    
 
 
 
 
+#TODO move to figures
 def generate_default_figure():
     fig = go.Figure()
 
@@ -103,23 +107,11 @@ def update_figures(n_clicks, location):
     if n_clicks == 0:
         # If the button hasn't been clicked, return default figures
         return generate_default_figure(), 'Choose a location and click Submit'
-
-    if location is None or location == '':
-        # If no location is provided, return default figures
-        return generate_default_figure(), 'Choose a location and click Submit'
+        #FIXME maybe we need to add 5 figures, no idea what happens to the empty space
 
     location = get_coordinates(location)
-
-    if location is None:
-        # Handle the error: return default figures, show an error message, etc.
-        return generate_default_figure(),''
+   
     
-    lat, lon = location.latitude, location.longitude
-    if lat is None or lon is None:
-        # Handle the error: return default figures, show an error message, etc.
-        return generate_default_figure(), 'Lat or Lon is None'
-    else:
-        pass
 
     filename = "src/data/download.grib"
 
