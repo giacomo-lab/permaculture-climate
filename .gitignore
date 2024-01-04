@@ -1,4 +1,5 @@
 #ignore file with thie extension
 #*.grib
-#*.idx
+*.idx
 *.DS_Store
+*.db
