@@ -2,3 +2,6 @@
 *.grib
 *.idx
 *.DS_Store
+*.zip
+*.nc
+/prediction_data
