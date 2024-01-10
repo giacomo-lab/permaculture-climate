@@ -132,17 +132,21 @@ def compute_prediction(lat, lon, db_file='data.db'):
     prediction_data = pd.read_sql_query(query, conn)
     conn.close()
 
+    print("Calculating prediction...")
     prediction_data['time']=pd.to_datetime(prediction_data['time'])
 
     prediction_data[prediction_data['variable']=='precipitation_prediction']
     proj_avg_prec = prediction_data[prediction_data['variable']=='precipitation_prediction']
     proj_avg_prec = xr.Dataset.from_dataframe(proj_avg_prec.set_index(['lat', 'lon', 'time'])).groupby(
         'time.month').mean(['time', 'lat', 'lon'])['pr']*2592000
+    
+    print("precipitation calculated")
 
     proj_avg_temp = prediction_data[prediction_data['variable']=='temperature_prediction']
     proj_avg_temp = xr.Dataset.from_dataframe(proj_avg_temp.set_index(['lat', 'lon', 'time'])).groupby(
         'time.month').mean(['time', 'lat', 'lon'])['tas']-273.15
-
+    
+    print("temp calculated")
     proj_avg_rh = prediction_data[prediction_data['variable']=='relative_humidity_prediction']
     proj_avg_rh = xr.Dataset.from_dataframe(proj_avg_rh.set_index(['lat', 'lon', 'time'])).groupby(
         'time.month').mean(['time', 'lat', 'lon'])[['hurs', 'height']]
@@ -156,6 +160,7 @@ def compute_prediction(lat, lon, db_file='data.db'):
         'time.month').mean(['time', 'lat', 'lon'])[['vas', 'height']]
     
     return proj_avg_prec, proj_avg_temp, proj_avg_rh, proj_avg_u, proj_avg_v
+
 
 
 

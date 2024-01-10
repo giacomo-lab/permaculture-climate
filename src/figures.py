@@ -14,6 +14,26 @@ from datetime import datetime
 from figures import *
 from calculations import *
 
+print('the start of figure file')
+
+def generate_default_figure():
+    fig = go.Figure()
+
+    fig.add_annotation(
+        x=0.5,
+        y=0.5,
+        text="Input your location",
+        showarrow=False,
+        font_size=16
+    )
+
+    fig.update_layout(
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        template='simple_white'
+    )
+
+    return fig
 
 def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp):
 
@@ -78,8 +98,8 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
                         )
 
     # Add a text on the bottom of the figure
-    fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past {len(year_range)} years and the 
-                       <br>forcasted values for the next {len(year_range_forecast)} years. 
+    fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past 30 years and the 
+                       <br>forcasted values for the next 30 years. 
                        <br>Blue and lightblue bars represent precipitation, red and orange lines represents temperature.
                        <br>Hover over the bars and lines to see the values. Click on the legend to hide/show the data.""",
                         xref='paper', yref='paper',
