@@ -10,14 +10,39 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 import matplotlib.pyplot as plt
 import numpy as np
+from geopy.geocoders import Nominatim
 from datetime import datetime
+import timezonefinder
+from astral.sun import sun
+from astral.location import LocationInfo
 from figures import *
 from calculations import *
+
+
+def generate_default_figure():
+    fig = go.Figure()
+
+    fig.add_annotation(
+        x=0.5,
+        y=0.5,
+        text="Input your location",
+        showarrow=False,
+        font_size=16
+    )
+
+    fig.update_layout(
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        template='simple_white'
+    )
+
+    return fig
 
 
 def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp):
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
+
     # Add a bar chart for precipitation and forcasted precipitation to the secondary y-axis
     bar_prec = go.Bar(x=avg_prec.month, 
                       y=avg_prec, 
@@ -53,14 +78,17 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
     fig.add_trace(go.Scatter(x=proj_avg_temp.month, 
                              y=proj_avg_temp, 
                              mode='lines', 
-                             opacity=0.85,
+                             opacity=1,                         
+                             line_dash='dash',
+                             line_width=3,
                              name='Forcasted temperature', 
-                             line=dict(color='orange', width=3),  # Make the line thicker
+                             line=dict(color='red', width=3),  # Make the line thicker
                              hovertemplate=('%{x}: %{y:.0f} °C <extra></extra>')
                              ),   
                 secondary_y=True,
                 )
-    
+
+
     # Set the layout to have two y-axes
     fig.update_layout(title='Temperature and precipitation (past and forcasted)',
                       yaxis=dict(title='Precipitation (mm)', tickfont=dict(size=14)),  # Make the tick labels bigger
@@ -76,11 +104,11 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
                         height=600,  # Set the figure height
                         margin=dict(b=200) # Adjust the bottom margin to create more space below the figure
                         )
-
+    
     # Add a text on the bottom of the figure
-    fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past {len(year_range)} years and the 
-                       <br>forcasted values for the next {len(year_range_forecast)} years. 
-                       <br>Blue and lightblue bars represent precipitation, red and orange lines represents temperature.
+    fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past 31 years and the 
+                       <br>forcasted values for the next 31 years. 
+                       <br>Blue and lightblue bars represent precipitation, red lines represent temperatures.
                        <br>Hover over the bars and lines to see the values. Click on the legend to hide/show the data.""",
                         xref='paper', yref='paper',
                         x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
@@ -88,6 +116,7 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
                         align='left',  # Set align to 'left'
                         font=dict(size=12, color='black'),
                         )
+    
     return fig
 
 
@@ -179,19 +208,19 @@ def generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp):
 
     # Show the figure
     fig.update_traces(hovertemplate='%{x}: %{y:.0f} °C <extra></extra>')
-    fig.show()
+
     
     return fig
 
 
 #DONE: add image rh range
-def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh):
-    # Create a DataFrame from the DataArrays
+def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh, proj_avg_hum):
     df = pd.DataFrame({
         'month': avg_rh.month.values,
         'avg_rh': avg_rh.values,
         'max_rh': mean_max_rh.values,
-        'min_rh': mean_min_rh.values
+        'min_rh': mean_min_rh.values,
+        'proj': proj_avg_hum.values
     })
 
     # Create a line chart for average rel humidity
@@ -201,6 +230,19 @@ def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh):
                              mode='lines', 
                              name='Average relative humidity', 
                              line_color='rgb(0, 0, 200)')
+                             )
+
+
+
+    # Add a line chart for projected rel humidity
+    fig.add_trace(go.Scatter(x=df['month'], y=df['proj'], 
+                             mode='lines', 
+                             name='Forecasted realtive humidity', 
+                             line_dash='dash',
+                             line_width=2.7,
+                             line_color='rgb(0, 0, 200)', 
+                             showlegend=True
+                             )
                              )
 
     # Add a line chart for max rel humidity
@@ -220,6 +262,7 @@ def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh):
                              showlegend=False
                              )
                              )
+
     # Set the layout
     padding = (max(df['max_rh']) - min(df['min_rh']))/5
     fig.update_yaxes(range=[min(df['min_rh']) - padding, max(df['max_rh']) + padding])
@@ -239,10 +282,14 @@ def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh):
                                  ),
                       width=1075,
                       height=600,
-                      template='simple_white'
+                      template='simple_white',
+                          legend=dict(
+                       traceorder='normal',  # 'normal' or 'reversed'
+                     ),
                       )
     # Add text within the figure
     fig.add_annotation(text="""This figure illustrates average humidity range for each month. 
+                       <br>Blue dolif and dotted line show the average relative and forecasted relative humidity.
                        <br>The range delimiters show the mean of monhtly maximum and minimum relative humidity. 
                        <br>Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
                        <br>Hover over the lines to see the values.
@@ -259,18 +306,18 @@ def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh):
 
     # Show the figure
     fig.update_traces(hovertemplate='%{x}: %{y:.0f} % <extra></extra>')
-    fig.show()
-    
+
+
     return fig
 
 
-def generate_fig_cloud_cover(location, avg_tcc):
+def generate_fig_cloud_cover(coords, avg_tcc):
    #find the timezone of the location
     tf = timezonefinder.TimezoneFinder()
-    timezone_str = tf.certain_timezone_at(lat=location.latitude, lng=location.longitude)
+    timezone_str = tf.certain_timezone_at(lat=coords.latitude, lng=coords.longitude)
 
     #define location infos for the astral package only using coordinates
-    location_info = LocationInfo(None, None, timezone_str, location.latitude, location.longitude)
+    location_info = LocationInfo(None, None, timezone_str, coords.latitude, coords.longitude)
 
     #define two empty lists for sunrise and sunset times
     sunrise_times, sunset_times = [], []
@@ -374,7 +421,7 @@ def generate_fig_cloud_cover(location, avg_tcc):
     # Adjust the bottom margin to create more space below the figure
     fig.update_layout(margin=dict(b=200))
 
-    fig.show()
+
 
     return fig
 
@@ -383,15 +430,17 @@ def generate_fig_cloud_cover(location, avg_tcc):
 def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
     # Calculate wind speeds for past data
     wind_speed = np.sqrt(avg_u**2 + avg_v**2)
+    
     #convert to km/h
     wind_speed = wind_speed*3.6
 
+    
     # Calculate wind direction (see: https://confluence.ecmwf.int/pages/viewpage.action?pageId=133262398)
     wind_direction = np.mod(180 + np.arctan2(avg_u, avg_v) * (180 / np.pi), 360)
 
     #prepare the data for the wind rose
-    df = pd.DataFrame({'speed': wind_speed, 'direction': wind_direction})
-
+    df = pd.DataFrame({'speed': wind_speed.values, 'direction': wind_direction.values})
+    print('done dataframe 1')
     bins_dir = np.linspace(0, 360, 9)
     labels_dir = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     labels_speed = ["0-5", "5-10", "10-15", "15-20", "20-25", "25+"]
@@ -409,25 +458,32 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
     frequency_df['frequency'] = frequency_df['frequency'] / total_frequency
     
     # Calculate wind speeds for climate forcasted data
-    wind_speed = np.sqrt(proj_avg_u**2 + proj_avg_v**2)
+    wind_speed_proj = np.sqrt(proj_avg_u**2 + proj_avg_v**2)
     #convert to km/h
-    wind_speed = wind_speed*3.6
+    wind_speed_proj = wind_speed_proj*3.6
 
     # Calculate wind direction (see: https://confluence.ecmwf.int/pages/viewpage.action?pageId=133262398)
-    wind_direction = np.mod(180 + np.arctan2(proj_avg_u, proj_avg_v) * (180 / np.pi), 360)
+    wind_direction_proj = np.mod(180 + np.arctan2(proj_avg_u, proj_avg_v) * (180 / np.pi), 360)
 
+    print(type(wind_direction_proj))
+    print(type(wind_speed_proj))
+    #wind_speed_proj = wind_speed_proj.to_array()
+    #wind_direction_proj = wind_direction_proj.to_array()
+    #print(type(wind_direction_proj))
+    #print(type(wind_speed_proj))
+    print('Im here')
     #prepare the data for the wind rose
-    df = pd.DataFrame({'speed': wind_speed, 'direction': wind_direction})
-
+    df_proj = pd.DataFrame({'speed': wind_speed_proj, 'direction': wind_direction_proj})
+    print('done')
     bins_dir = np.linspace(0, 360, 9)
     labels_dir = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     labels_speed = ["0-5", "5-10", "10-15", "15-20", "20-25", "25+"]
     bins_speed = np.concatenate([np.arange(0, 26, 5), np.array([np.inf])])
-    df['direction'] = pd.cut(df['direction'], bins=bins_dir, labels=labels_dir)
-    df['speed'] = pd.cut(df['speed'], bins=bins_speed, labels=labels_speed)
+    df_proj['direction'] = pd.cut(df_proj['direction'], bins=bins_dir, labels=labels_dir)
+    df_proj['speed'] = pd.cut(df_proj['speed'], bins=bins_speed, labels=labels_speed)
 
     # Calculate frequencies
-    frequency_df_pred = df.groupby(['direction', 'speed'], observed=False).size().reset_index(name='frequency')
+    frequency_df_pred = df_proj.groupby(['direction', 'speed'], observed=False).size().reset_index(name='frequency')
 
     # Calculate total frequency
     total_frequency_pred = frequency_df_pred['frequency'].sum()
@@ -530,6 +586,6 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
     # Adjust the bottom margin to create more space below the figure
     fig.update_layout(margin=dict(b=200))
 
-    fig.show()     
+ 
 
     return fig

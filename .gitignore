@@ -4,4 +4,9 @@
 *.DS_Store
 *.zip
 *.nc
-/prediction_data
+*.db
+src/data/prediction_data
+src/*.zip
+src/*.db
+src/*.grib
+src/*.idx
