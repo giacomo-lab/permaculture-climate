@@ -23,16 +23,20 @@ def generate_default_figure():
     fig = go.Figure()
 
     fig.add_annotation(
-        x=0.5,
-        y=0.5,
-        text="Input your location",
-        showarrow=False,
-        font_size=16
-    )
-
+    x=4,
+    y=11,
+    text="PLACEHOLDER GRAPH",
+    showarrow=False,
+    font_size=24,
+    textangle=-45,  # Rotate text by 45 degrees
+    opacity=0.5,  # Set transparency (0 is fully transparent, 1 is fully opaque)
+    bordercolor="black",  # Border color
+    borderwidth=2,  # Border width
+    borderpad=4  # Padding around the border
+)
     fig.update_layout(
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        xaxis=dict(range=[0, 10], showgrid=False, showticklabels=False),  # Adjust the range as needed
+        yaxis=dict(range=[0, 20], showgrid=False, showticklabels=False),  # Adjust the range as needed
         template='simple_white'
     )
 

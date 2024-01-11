@@ -26,11 +26,12 @@ server = app.server
 #define app structure
 app.layout = html.Div([
     html.Div([
-        dcc.Input(id='location-input', type='text', placeholder='Enter a location'),
-        html.Button('Submit', id='submit-button', n_clicks=0),  # Add a button
-    ], style={'display': 'flex', 'justify-content': 'center'}),
+        dcc.Input(id='location-input', type='text', placeholder='Enter a location', style={'font-size' : '22px'}),
+        html.Button('Submit', id='submit-button', n_clicks=0,
+                    style={'background-color': 'rgb(51, 51, 51)', 'color': 'white', 'border-radius': '5px', 'font-size': '22px'}),  # Add a button
+    ], style={'display': 'flex', 'justify-content': 'center', 'margin-top': '50px' }),
 
-    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '0 auto'}),  # Add a div for messages
+    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center'}),  # Add a div for messages
     html.Div([dcc.Graph(id='fig_temp_and_prec', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
               dcc.Graph(id='fig_range_temp', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
               dcc.Graph(id='fig_range_rh', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
@@ -58,18 +59,18 @@ app.layout = html.Div([
 def update_figures(n_clicks, location):
     if n_clicks == 0:
         # If the button hasn't been clicked, return default figures
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Choose a location and click Submit'
+        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), "Choose a location like 'Berlin, Germany' and click Submit"
 
     if location is None or location == '':
         # If no location is provided, return default figures
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Choose a location and click Submit'
+        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Your location is invalid. Choose a new location and click Submit'
 
     coords = get_coordinates(location)
     lat, lon = coords.latitude, coords.longitude
     
     if lat is None or lon is None:
         # Handle the error: return default figures, show an error message, etc.
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Choose a location and click Submit'
+        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Your location is invalid. Choose a new location and click Submit'
     else:
         pass
 
@@ -79,17 +80,13 @@ def update_figures(n_clicks, location):
     print("Calculating climatology...")
 
     lat, lon = coords.latitude, coords.longitude
-    print('1')
+
     avg_prec, avg_temp, mean_max_temp, mean_min_temp, avg_rh, mean_max_rh, mean_min_rh, avg_u, avg_v, avg_tcc = compute_climatology(lat, lon, db_file='data.db')
-    print('computing predictions')
     # Calculate prediction
-    #TODO  add rh here
     proj_avg_prec, proj_avg_temp, proj_avg_rh, proj_avg_u, proj_avg_v = compute_prediction(lat, lon, db_file='data.db')
     # proj_avg_prec, proj_avg_temp, proj_avg_u, proj_avg_v = compute_prediction(lat, lon, db_file='data.db')
-    print('done')
-#TODO separare, fare due funzioni, una prediction und past data,
-# poi unaltra funzione per sta roba qua sotto, solo che prende na lista assurda di input variables
-    #FIXME: check the inputs of the functions
+    #TODO separare, fare due funzioni, una prediction und past data,
+    # poi unaltra funzione per sta roba qua sotto, solo che prende na lista assurda di input variables
     
     message = "figure generated successfully"
     print('generating figures')
@@ -127,5 +124,4 @@ def get_coordinates(location):
 
 
 if __name__ == '__main__':
-    #port = int(os.environ.get("PORT", 10000))
     app.run_server(debug=True)
