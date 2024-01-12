@@ -4,11 +4,12 @@ import pandas as pd
 import numpy as np
 
 # List of NetCDF files and corresponding variable names
-files = [('prediction_data/eastward_near_surface_wind/uas_Amon_EC-Earth3-CC_ssp245_r1i1p1f1_gr_20160116-20461216_v20210113.nc', 'u_wind'),
-         ('prediction_data/northward_near_surface_wind/vas_Amon_EC-Earth3-CC_ssp245_r1i1p1f1_gr_20160116-20461216_v20210113.nc', 'v_wind'),
-         ('prediction_data/precipitation/pr_Amon_EC-Earth3-CC_ssp245_r1i1p1f1_gr_20160116-20461216_v20210113.nc', 'precipitation'),
-         ('prediction_data/near_surface_relative_humidity/hurs_Amon_EC-Earth3-CC_ssp245_r1i1p1f1_gr_20160116-20461216_v20210113.nc', 'relative_humidity'),
-         ('prediction_data/near_surface_air_temperature/tas_Amon_EC-Earth3-CC_ssp245_r1i1p1f1_gr_20160116-20461216_v20210113.nc', 'temperature')
+#TODO optimise this, take files automatically, no manual imput
+files = [('src/data/prediction_data/eastward_near_surface_wind-ssp2_4_5_2016_2046.nc', 'u_wind'),
+         ('src/data/prediction_data/northward_near_surface_wind-ssp2_4_5_2016_2046.nc', 'v_wind'),
+         ('src/data/prediction_data/precipitation-ssp2_4_5_2016_2046.nc', 'precipitation'),
+         ('src/data/prediction_data/near_surface_relative_humidity-ssp2_4_5_2016_2046.nc', 'relative_humidity'),
+         ('src/data/prediction_data/near_surface_air_temperature-ssp2_4_5_2016_2046.nc', 'temperature')
          ]
 
 # Initialize an empty DataFrame

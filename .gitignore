@@ -1,6 +1,20 @@
 #ignore file with thie extension
+<<<<<<< HEAD
 #*.grib
 *.idx
 *.DS_Store
 *.db
 *.ipynb
+=======
+*.grib
+*.idx
+*.DS_Store
+*.zip
+*.nc
+*.db
+src/data/prediction_data
+src/*.zip
+src/*.db
+src/*.grib
+src/*.idx
+>>>>>>> app_matthias
