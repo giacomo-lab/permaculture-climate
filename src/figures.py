@@ -15,8 +15,10 @@ from datetime import datetime
 import timezonefinder
 from astral.sun import sun
 from astral.location import LocationInfo
+import requests
 from figures import *
 from calculations import *
+
 
 
 def generate_default_figure():
@@ -25,7 +27,7 @@ def generate_default_figure():
     fig.add_annotation(
     x=4,
     y=11,
-    text="PLACEHOLDER GRAPH",
+    text="""PLACEHOLDER GRAPH <br> please insert location""",
     showarrow=False,
     font_size=24,
     textangle=-45,  # Rotate text by 45 degrees
@@ -42,6 +44,24 @@ def generate_default_figure():
 
     return fig
 
+def generate_dynamic_text(coords, location, avg_temp, avg_prec):
+    url = f'https://api.open-elevation.com/api/v1/lookup?locations={coords.latitude},{coords.longitude}'
+    response = requests.get(url)
+    data = response.json()
+    elevation = data['results'][0]['elevation']
+
+    months = [
+        "January", "February", "March", "April",
+        "May", "June", "July", "August",
+        "September", "October", "November", "December"
+    ]
+    text = (f"""
+    {coords.address.split(',')[0].strip()}, is located at an altitude of {int(elevation)} m above sea level.
+    {months[np.argmin(avg_temp.values)]} is the coldest month with an average of {int(min(avg_temp.values))} °C, while {months[np.argmax(avg_temp.values)]} is the hottest ({int(max(avg_temp.values))} °C).
+    On average, {int(sum(avg_prec.values))} mm of rain falls every year, 
+    with {months[np.argmax(avg_prec.values)]} beeing the wettest and {months[np.argmin(avg_prec.values)]} the driest month.    
+    """)
+    return text
 
 def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp):
 

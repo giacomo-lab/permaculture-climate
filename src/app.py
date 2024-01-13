@@ -15,6 +15,7 @@ import numpy as np
 import dask
 import os
 from datetime import datetime
+import cProfile
 from figures import *
 from calculations import *
 
@@ -28,11 +29,13 @@ app.layout = html.Div([
     html.Div([
         dcc.Input(id='location-input', type='text', placeholder='Enter a location', style={'font-size' : '22px'}),
         html.Button('Submit', id='submit-button', n_clicks=0,
-                    style={'background-color': 'rgb(51, 51, 51)', 'color': 'white', 'border-radius': '5px', 'font-size': '22px'}),  # Add a button
+                    style={'background-color': 'rgb(51, 51, 51)', 'color': 'white', 'border-radius': '5px', 'font-size': '22px', 'padding': '10px', 'box-shadow':'none', 'border':'none'}),  # Add a button
     ], style={'display': 'flex', 'justify-content': 'center', 'margin-top': '50px' }),
 
-    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center'}),  # Add a div for messages
-    html.Div([dcc.Graph(id='fig_temp_and_prec', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center', 'font-size':'30px'}),  # Add a div for messages
+    #TODO change font-size and other aesthetical stuff in the dynamic text div
+    html.Div([html.Div(id='dynamic_text', style={'text-align': 'center', 'font-size': '25px', 'margin-top': '10px'}),
+              dcc.Graph(id='fig_temp_and_prec', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
               dcc.Graph(id='fig_range_temp', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
               dcc.Graph(id='fig_range_rh', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
               dcc.Graph(id='fig_tcc', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
@@ -41,13 +44,17 @@ app.layout = html.Div([
               style={'display': 'flex', 'flex-direction': 'column', 'align-items': 'center'}
               )
 ])
+
+
 @app.callback(
-    [Output('fig_temp_and_prec', 'figure'),
+    [Output('dynamic_text', 'children'),
+    Output('fig_temp_and_prec', 'figure'),
      Output('fig_range_temp', 'figure'),
      Output('fig_range_rh', 'figure'),
      Output('fig_tcc', 'figure'),
      Output('fig_wind', 'figure'),
-     Output('message', 'children')],  # Add an output for the message
+     Output('message', 'children'),
+     ],  # Add an output for the message
     [Input('submit-button', 'n_clicks')],  # Listen to the button's n_clicks property
     [State('location-input', 'value')]  # Get the current value of the location-input
 )
@@ -57,20 +64,21 @@ app.layout = html.Div([
 #======================
 
 def update_figures(n_clicks, location):
+    dyn_text_placeholder = print('')
     if n_clicks == 0:
         # If the button hasn't been clicked, return default figures
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), "Choose a location like 'Berlin, Germany' and click Submit"
+        return dyn_text_placeholder, generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), "Choose a location like 'Berlin, Germany' and click Submit"
 
     if location is None or location == '':
         # If no location is provided, return default figures
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Your location is invalid. Choose a new location and click Submit'
+        return dyn_text_placeholder, generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Your location is invalid. Choose a new location and click Submit'
 
     coords = get_coordinates(location)
     lat, lon = coords.latitude, coords.longitude
     
     if lat is None or lon is None:
         # Handle the error: return default figures, show an error message, etc.
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Your location is invalid. Choose a new location and click Submit'
+        return dyn_text_placeholder, generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Your location is invalid. Choose a new location and click Submit'
     else:
         pass
 
@@ -87,20 +95,22 @@ def update_figures(n_clicks, location):
     # proj_avg_prec, proj_avg_temp, proj_avg_u, proj_avg_v = compute_prediction(lat, lon, db_file='data.db')
     #TODO separare, fare due funzioni, una prediction und past data,
     # poi unaltra funzione per sta roba qua sotto, solo che prende na lista assurda di input variables
-    
+    #TODO get rid of message here?
     message = "figure generated successfully"
-    print('generating figures')
+
+    dynamic_text = generate_dynamic_text(coords, location, avg_temp, avg_prec)
+    
     fig_temp_and_prec = generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
-    print('f1')
+
     fig_range_temp = generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp)
-    print('f2')
+
     fig_range_rh = generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh, proj_avg_rh)
-    print('f3')
+
     fig_cloud_cover = generate_fig_cloud_cover(coords, avg_tcc)
-    print('f4')
+
     fig_wind_rose = generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v )
-    print('done')
-    return fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, message
+
+    return dynamic_text, fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, message
 
 
 
@@ -124,4 +134,10 @@ def get_coordinates(location):
 
 
 if __name__ == '__main__':
+    # Profile the main function using cProfile
+    n_clicks = 1
+    location = 'Puebla de don Fadrique'
+    cProfile.runctx('update_figures(n_clicks, location)', globals(), locals(), filename='profile_results')
+
+    # Run the Flask app with debug mode
     app.run_server(debug=True)

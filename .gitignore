@@ -10,3 +10,5 @@ src/*.zip
 src/*.db
 src/*.grib
 src/*.idx
+profile_results
+test.ipynb

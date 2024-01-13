@@ -41,7 +41,7 @@ print('Prediction_data table created successfully.')
 #climate tables (one table for each varibale)
 
 # Open the GRIB file
-filename = "past_climate.grib"
+filename = "src/data/past_climate_EU.grib"
 variables = ['2t','2d','10v', '10u', 'tp', 'tcc', 'rh']
 datasets = {}
 
