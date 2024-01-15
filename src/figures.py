@@ -15,8 +15,6 @@ from datetime import datetime
 import timezonefinder
 from astral.sun import sun
 from astral.location import LocationInfo
-from figures import *
-from calculations import *
 
 print('the start of figure file')
 

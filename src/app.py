@@ -17,18 +17,31 @@ import os
 from datetime import datetime
 from figures import *
 from calculations import *
+import diskcache
+from dash.exceptions import PreventUpdate
+from dash.long_callback import DiskcacheLongCallbackManager
 
-#TODO: be awesome
-# Initialize the Dash app
-app = dash.Dash(__name__)
+#just for mac
+#===========
+import os
+os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
+#===========
+
+# Set up a long callback manager
+long_callback_manager = DiskcacheLongCallbackManager(cache=diskcache.Cache("./cache"))
+
+app = dash.Dash(__name__, long_callback_manager=long_callback_manager)
 server = app.server
+
+
+# Define the initial style of the button
+button_style = {'backgroundColor': 'rgb(25, 25, 25)', 'color': 'white', 'borderRadius': '5px', 'fontSize': '22px'}
 
 #define app structure
 app.layout = html.Div([
     html.Div([
         dcc.Input(id='location-input', type='text', placeholder='Enter a location', style={'font-size' : '22px'}),
-        html.Button('Submit', id='submit-button', n_clicks=0,
-                    style={'background-color': 'rgb(51, 51, 51)', 'color': 'white', 'border-radius': '5px', 'font-size': '22px'}),  # Add a button
+        html.Button('Submit', id='submit-button', n_clicks=0, style=button_style),  # Use the variable here
     ], style={'display': 'flex', 'justify-content': 'center', 'margin-top': '50px' }),
 
     html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center'}),  # Add a div for messages
@@ -41,17 +54,24 @@ app.layout = html.Div([
               style={'display': 'flex', 'flex-direction': 'column', 'align-items': 'center'}
               )
 ])
-@app.callback(
+
+
+@app.long_callback(
     [Output('fig_temp_and_prec', 'figure'),
      Output('fig_range_temp', 'figure'),
      Output('fig_range_rh', 'figure'),
      Output('fig_tcc', 'figure'),
      Output('fig_wind', 'figure'),
-     Output('message', 'children')],  # Add an output for the message
-    [Input('submit-button', 'n_clicks')],  # Listen to the button's n_clicks property
-    [State('location-input', 'value')]  # Get the current value of the location-input
+     Output('message', 'children'),
+     Output('submit-button', 'disabled')],
+    [Input('submit-button', 'n_clicks')],
+    [State('location-input', 'value')],
+    running=[
+        (Output('submit-button', 'disabled'), True, False),
+        (Output('submit-button', 'style'), {**button_style, 'backgroundColor': 'grey'}, button_style)
+    ]
 )
-#TODO: improve default figures looks
+
 #TODO: imprvoe the error handling with more specific messages
 
 #======================
@@ -59,21 +79,30 @@ app.layout = html.Div([
 def update_figures(n_clicks, location):
     if n_clicks == 0:
         # If the button hasn't been clicked, return default figures
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), "Choose a location like 'Berlin, Germany' and click Submit"
+        return [generate_default_figure(), generate_default_figure(), generate_default_figure(), 
+            generate_default_figure(), generate_default_figure(), 
+            '', 
+            False
+            ]
 
     if location is None or location == '':
         # If no location is provided, return default figures
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Your location is invalid. Choose a new location and click Submit'
+        return [generate_default_figure(), generate_default_figure(), generate_default_figure(), 
+                generate_default_figure(), generate_default_figure(), 
+                'Your location is invalid. Choose a new location and click Submit', 
+                False
+                ]
 
     coords = get_coordinates(location)
     lat, lon = coords.latitude, coords.longitude
     
     if lat is None or lon is None:
         # Handle the error: return default figures, show an error message, etc.
-        return generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), generate_default_figure(), 'Your location is invalid. Choose a new location and click Submit'
-    else:
-        pass
-
+        return [generate_default_figure(), generate_default_figure(), generate_default_figure(),
+                generate_default_figure(), generate_default_figure(), 
+                'Your location is invalid. Choose a new location and click Submit',
+                False
+                 ]
  
 
 #Calculate climatology and perform units conversion. Parallelized the process using dask.
@@ -100,7 +129,7 @@ def update_figures(n_clicks, location):
     print('f4')
     fig_wind_rose = generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v )
     print('done')
-    return fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, message
+    return fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, message, False
 
 
 
