@@ -1,0 +1,3 @@
+root - ERROR - Error writing variable tp to database: cannot reshape array of size 69841800 into shape (16777200,)
+root - ERROR - Error writing variable tcc to database: database or disk is full
+root - ERROR - Error writing variable rh to database: No objects to concatenate

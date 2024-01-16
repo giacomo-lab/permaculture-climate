@@ -1,5 +1,0 @@
-services:
-  - type: web
-    name: permaculture_climate
-    env: docker
-    plan: free

@@ -33,26 +33,43 @@ long_callback_manager = DiskcacheLongCallbackManager(cache=diskcache.Cache("./ca
 app = dash.Dash(__name__, long_callback_manager=long_callback_manager)
 server = app.server
 
-
 # Define the initial style of the button
 button_style = {'backgroundColor': 'rgb(25, 25, 25)', 'color': 'white', 'borderRadius': '5px', 'fontSize': '22px'}
+button_style_running = {**button_style, 'backgroundColor': 'grey'}
 
 #define app structure
 app.layout = html.Div([
     html.Div([
         dcc.Input(id='location-input', type='text', placeholder='Enter a location', style={'font-size' : '22px'}),
-        html.Button('Submit', id='submit-button', n_clicks=0, style=button_style),  # Use the variable here
+        html.Button('Submit', id='submit-button', n_clicks=0, style=button_style),
     ], style={'display': 'flex', 'justify-content': 'center', 'margin-top': '50px' }),
 
-    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center'}),  # Add a div for messages
-    html.Div([dcc.Graph(id='fig_temp_and_prec', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-              dcc.Graph(id='fig_range_temp', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-              dcc.Graph(id='fig_range_rh', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-              dcc.Graph(id='fig_tcc', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
-              dcc.Graph(id='fig_wind', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'})
-              ], 
-              style={'display': 'flex', 'flex-direction': 'column', 'align-items': 'center'}
-              )
+    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center'}),
+
+    html.Div([
+        html.Div(id='message_temp_and_prec', style={'margin-left': '3vw','margin-right': '3vw', 'max-width': '20vw'}),
+        dcc.Graph(id='fig_temp_and_prec', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+    ], style={'display': 'flex', 'align-items': 'center'}),
+
+    html.Div([
+        html.Div(id='message_range_temp', style={'margin-left': '3px','margin-right': '3px', 'max-width': '100px'}),
+        dcc.Graph(id='fig_range_temp', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+    ], style={'display': 'flex', 'align-items': 'center'}),
+
+    html.Div([
+        html.Div(id='message_range_rh', style={'margin-right': '3px'}),
+        dcc.Graph(id='fig_range_rh', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+    ], style={'display': 'flex', 'align-items': 'center'}),
+
+    html.Div([
+        html.Div(id='message_tcc', style={'margin-right': '10px'}),
+        dcc.Graph(id='fig_tcc', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+    ], style={'display': 'flex', 'align-items': 'center'}),
+
+    html.Div([
+        html.Div(id='message_wind', style={'margin-right': '10px'}),
+        dcc.Graph(id='fig_wind', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+    ], style={'display': 'flex', 'align-items': 'center'}),
 ])
 
 
@@ -62,13 +79,19 @@ app.layout = html.Div([
      Output('fig_range_rh', 'figure'),
      Output('fig_tcc', 'figure'),
      Output('fig_wind', 'figure'),
+     Output('message_temp_and_prec', 'children'),
+     Output('message_range_temp', 'children'),
+     Output('message_range_rh', 'children'),
+     Output('message_tcc', 'children'),
+     Output('message_wind', 'children'),
      Output('message', 'children'),
-     Output('submit-button', 'disabled')],
+     Output('submit-button', 'disabled'),
+     Output('submit-button', 'style')],
     [Input('submit-button', 'n_clicks')],
     [State('location-input', 'value')],
     running=[
         (Output('submit-button', 'disabled'), True, False),
-        (Output('submit-button', 'style'), {**button_style, 'backgroundColor': 'grey'}, button_style)
+        (Output('submit-button', 'style'), button_style_running, button_style)
     ]
 )
 
@@ -81,16 +104,18 @@ def update_figures(n_clicks, location):
         # If the button hasn't been clicked, return default figures
         return [generate_default_figure(), generate_default_figure(), generate_default_figure(), 
             generate_default_figure(), generate_default_figure(), 
+            " ", " ", " ", " ", " ",
             '', 
-            False
+            False, button_style
             ]
 
     if location is None or location == '':
         # If no location is provided, return default figures
         return [generate_default_figure(), generate_default_figure(), generate_default_figure(), 
-                generate_default_figure(), generate_default_figure(), 
+                generate_default_figure(), generate_default_figure(),
+                " ", " ", " ", " ", " ",
                 'Your location is invalid. Choose a new location and click Submit', 
-                False
+                False, button_style
                 ]
 
     coords = get_coordinates(location)
@@ -100,8 +125,9 @@ def update_figures(n_clicks, location):
         # Handle the error: return default figures, show an error message, etc.
         return [generate_default_figure(), generate_default_figure(), generate_default_figure(),
                 generate_default_figure(), generate_default_figure(), 
+                " ", " ", " ", " ", " ",
                 'Your location is invalid. Choose a new location and click Submit',
-                False
+                False, button_style
                  ]
  
 
@@ -116,7 +142,15 @@ def update_figures(n_clicks, location):
     # proj_avg_prec, proj_avg_temp, proj_avg_u, proj_avg_v = compute_prediction(lat, lon, db_file='data.db')
     #TODO separare, fare due funzioni, una prediction und past data,
     # poi unaltra funzione per sta roba qua sotto, solo che prende na lista assurda di input variables
-    
+    ### figure comments 
+    comm_temp_and_prec = """This figure show the average monthly temperature and precipitation for the past 31 years and the forcasted
+                          values for the next 31 years. Blue and lightblue bars represent precipitation,
+                          red lines represent temperatures.
+                          Hover over the bars and lines to see the values. Click on the legend to hide\/show the data."""
+
+
+
+
     message = "figure generated successfully"
     print('generating figures')
     fig_temp_and_prec = generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
@@ -129,7 +163,10 @@ def update_figures(n_clicks, location):
     print('f4')
     fig_wind_rose = generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v )
     print('done')
-    return fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, message, False
+    return fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, \
+       comm_temp_and_prec, "Message for range temp", "Message for range rh", "Message for tcc", "Message for wind", \
+         '', \
+       False, button_style
 
 
 
