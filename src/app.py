@@ -38,6 +38,12 @@ button_style = {'backgroundColor': 'rgb(25, 25, 25)', 'color': 'white', 'borderR
 button_style_running = {**button_style, 'backgroundColor': 'grey'}
 
 #define app structure
+margin_left = '3vw'
+margin_right = '3vw'
+style_comment = {'margin-left': margin_left,'margin-right': margin_right, 'max-width': '30vw'}
+style_figure = {'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}
+
+
 app.layout = html.Div([
     html.Div([
         dcc.Input(id='location-input', type='text', placeholder='Enter a location', style={'font-size' : '22px'}),
@@ -47,31 +53,30 @@ app.layout = html.Div([
     html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center'}),
 
     html.Div([
-        html.Div(id='message_temp_and_prec', style={'margin-left': '3vw','margin-right': '3vw', 'max-width': '20vw'}),
-        dcc.Graph(id='fig_temp_and_prec', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+        html.Div(id='message_temp_and_prec', style=style_comment),
+        dcc.Graph(id='fig_temp_and_prec', style=style_figure),
     ], style={'display': 'flex', 'align-items': 'center'}),
 
     html.Div([
-        html.Div(id='message_range_temp', style={'margin-left': '3px','margin-right': '3px', 'max-width': '100px'}),
-        dcc.Graph(id='fig_range_temp', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+        html.Div(id='message_range_temp', style=style_comment),
+        dcc.Graph(id='fig_range_temp', style=style_figure),
     ], style={'display': 'flex', 'align-items': 'center'}),
 
     html.Div([
-        html.Div(id='message_range_rh', style={'margin-right': '3px'}),
-        dcc.Graph(id='fig_range_rh', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+        html.Div(id='message_range_rh', style=style_comment),
+        dcc.Graph(id='fig_range_rh', style=style_figure),
     ], style={'display': 'flex', 'align-items': 'center'}),
 
     html.Div([
-        html.Div(id='message_tcc', style={'margin-right': '10px'}),
-        dcc.Graph(id='fig_tcc', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+        html.Div(id='message_tcc', style=style_comment),
+        dcc.Graph(id='fig_tcc', style=style_figure),
     ], style={'display': 'flex', 'align-items': 'center'}),
 
     html.Div([
-        html.Div(id='message_wind', style={'margin-right': '10px'}),
-        dcc.Graph(id='fig_wind', style={'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}),
+        html.Div(id='message_wind', style=style_comment),
+        dcc.Graph(id='fig_wind', style=style_figure),
     ], style={'display': 'flex', 'align-items': 'center'}),
 ])
-
 
 @app.long_callback(
     [Output('fig_temp_and_prec', 'figure'),
@@ -96,7 +101,6 @@ app.layout = html.Div([
 )
 
 #TODO: imprvoe the error handling with more specific messages
-
 #======================
 
 def update_figures(n_clicks, location):
@@ -147,7 +151,32 @@ def update_figures(n_clicks, location):
                           values for the next 31 years. Blue and lightblue bars represent precipitation,
                           red lines represent temperatures.
                           Hover over the bars and lines to see the values. Click on the legend to hide\/show the data."""
+    
+    comm_range_temp = """This figure shows the average temperature range for each month of the year.
+                        The top line shows the average maximum temperature of each month, the bottom line the averaged minima.
+                        Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
+                        When the range reaches 0 or below, a blue line highlights the freezing temperature.
+                        Hover over the lines to see the values."""
 
+    comm_range_rh = """This figure illustrates average humidity range for each month. 
+                       Blue dolif and dotted line show the average relative and forecasted relative humidity.
+                       The range delimiters show the mean of monhtly maximum and minimum relative humidity. 
+                       Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
+                       Hover over the lines to see the values.
+                       """
+
+    comm_cloud_cover = """This plot shows cloud cover changes throughout the day and throughout the year.
+                       The variaton of the grey colorscale on a column (month) shows the typical daily changes of cloud cover for that month (0% = clear sky, 100% = overcast).
+                       The differences between the columns give an idea of which months are cloudier than others.
+                       Keep in mind that we are looking at averages so even if the plot never shows clear skies (example: 12% cloud cover), clear skies are still possible.
+                       The two lines show sunrise and sunset times, adjusted for the timezone of the location as well as daylight saving times.
+                       Hover over the lines to see the values. Click on the legend to hide/show the data."""
+
+    comm_wind_rose = """Each wind direction is represented by a bar. The length of the bars show how often the wind blows from that direction (in %).
+                        The colours indicate the averaged wind speed in km/h. 
+                        WATCH OUT: The radial scale is different for each subplot to make the differences more visible.
+                        Keep in mind that these are averaged values and don't highlight particularly strong winds.
+                        Hover over the lines to see the values. Click on the legend to hide/show the data."""
 
 
 
@@ -164,7 +193,7 @@ def update_figures(n_clicks, location):
     fig_wind_rose = generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v )
     print('done')
     return fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, \
-       comm_temp_and_prec, "Message for range temp", "Message for range rh", "Message for tcc", "Message for wind", \
+       comm_temp_and_prec, comm_range_temp, comm_range_rh, comm_cloud_cover, comm_wind_rose, \
          '', \
        False, button_style
 
