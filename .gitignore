@@ -5,3 +5,8 @@
 *.db
 *.ipynb
 *.nc
+*.pyc
+#ignore directory
+src/data/
+cache/
+src/__pycache__/
