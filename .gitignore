@@ -1,7 +1,7 @@
 #ignore file with thie extension
 *.grib
 *.idx
-*.DS_Store
+.DS_Store
 *.db
 *.ipynb
 *.nc

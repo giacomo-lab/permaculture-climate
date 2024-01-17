@@ -38,10 +38,10 @@ button_style = {'backgroundColor': 'rgb(25, 25, 25)', 'color': 'white', 'borderR
 button_style_running = {**button_style, 'backgroundColor': 'grey'}
 
 #define app structure
-margin_left = '3vw'
-margin_right = '3vw'
-style_comment = {'margin-left': margin_left,'margin-right': margin_right, 'max-width': '30vw'}
-style_figure = {'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}
+margin_left = '5vw'
+margin_right = '1vw'
+style_comment = {'margin-left': margin_left,'margin-right': margin_right, 'max-width': '18vw'}
+style_figure = {'width': '75vw', 'max-width': '1000px', 'margin': '0 auto'}
 
 
 app.layout = html.Div([
