@@ -15,27 +15,10 @@ from datetime import datetime
 import timezonefinder
 from astral.sun import sun
 from astral.location import LocationInfo
+from figures import *
+from calculations import *
 
-print('the start of figure file')
 
-def generate_default_figure():
-    fig = go.Figure()
-
-    fig.add_annotation(
-        x=0.5,
-        y=0.5,
-        text="Input your location",
-        showarrow=False,
-        font_size=16
-    )
-
-    fig.update_layout(
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        template='simple_white'
-    )
-
-    return fig
 
 def generate_default_figure():
     fig = go.Figure()
@@ -43,7 +26,7 @@ def generate_default_figure():
     fig.add_annotation(
     x=4,
     y=11,
-    text="PLACEHOLDER GRAPH",
+    text="""PLACEHOLDER GRAPH <br> please insert location""",
     showarrow=False,
     font_size=24,
     textangle=-45,  # Rotate text by 45 degrees
@@ -59,6 +42,8 @@ def generate_default_figure():
     )
 
     return fig
+
+
 
 
 def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp):

@@ -15,14 +15,16 @@ import numpy as np
 import dask
 import os
 from datetime import datetime
-from figures import *
-from calculations import *
 import diskcache
 from dash.exceptions import PreventUpdate
 from dash.long_callback import DiskcacheLongCallbackManager
+import multiprocess
+from figures import *
+from calculations import *
+from text_messages import *
 
-#just for mac
-#===========
+#TODO: be awesome
+# Initialize the Dash app
 import os
 os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
 #===========
@@ -38,20 +40,27 @@ button_style = {'backgroundColor': 'rgb(25, 25, 25)', 'color': 'white', 'borderR
 button_style_running = {**button_style, 'backgroundColor': 'grey'}
 
 #define app structure
-margin_left = '5vw'
-margin_right = '1vw'
-style_comment = {'margin-left': margin_left,'margin-right': margin_right, 'max-width': '18vw'}
-style_figure = {'width': '75vw', 'max-width': '1000px', 'margin': '0 auto'}
+margin_left = '10vw'
+margin_right = '3vw'
+style_comment = {'margin-left': margin_left,'margin-right': margin_right, 'max-width': '30vw', 'fontsize': '16px'}
+style_figure = {'width': '100%', 'max-width': '1000px', 'margin': '0 auto'}
 
-
+# Input field and button
 app.layout = html.Div([
     html.Div([
         dcc.Input(id='location-input', type='text', placeholder='Enter a location', style={'font-size' : '22px'}),
         html.Button('Submit', id='submit-button', n_clicks=0, style=button_style),
     ], style={'display': 'flex', 'justify-content': 'center', 'margin-top': '50px' }),
-
-    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center'}),
-
+    
+    # Message like please input location
+    html.Div(id='message', style={'display': 'flex', 'justify-content': 'center', 'margin': '10px auto', 'text-align': 'center', 'fontsize':'18px'}),
+    
+    # Dynamic text for each location
+    html.Div(id='dynamic_text', style={'text-align': 'center', 'font-size': '18px', 'margin-top': '10px', 
+                                       'margin-left': '14vw','margin-right': '14vw'}),
+    #center line
+    html.Div(style={'width': '33%', 'margin-bottom':'10px', 'margin-top': '10px', 'margin-right' : 'auto', 'margin-left' : 'auto', 'border-top': '1px solid black'}),
+    
     html.Div([
         html.Div(id='message_temp_and_prec', style=style_comment),
         dcc.Graph(id='fig_temp_and_prec', style=style_figure),
@@ -79,7 +88,8 @@ app.layout = html.Div([
 ])
 
 @app.long_callback(
-    [Output('fig_temp_and_prec', 'figure'),
+    [Output('dynamic_text', 'children'),
+     Output('fig_temp_and_prec', 'figure'),
      Output('fig_range_temp', 'figure'),
      Output('fig_range_rh', 'figure'),
      Output('fig_tcc', 'figure'),
@@ -100,22 +110,20 @@ app.layout = html.Div([
     ]
 )
 
-#TODO: imprvoe the error handling with more specific messages
 #======================
-
 def update_figures(n_clicks, location):
     if n_clicks == 0:
         # If the button hasn't been clicked, return default figures
-        return [generate_default_figure(), generate_default_figure(), generate_default_figure(), 
+        message = "Enter a location like 'Berlin, Germany' and click submit"
+        return [message, generate_default_figure(), generate_default_figure(), generate_default_figure(), 
             generate_default_figure(), generate_default_figure(), 
-            " ", " ", " ", " ", " ",
-            '', 
+            " ", " ", " ", " ", " ", " ", 
             False, button_style
             ]
 
     if location is None or location == '':
         # If no location is provided, return default figures
-        return [generate_default_figure(), generate_default_figure(), generate_default_figure(), 
+        return ['', generate_default_figure(), generate_default_figure(), generate_default_figure(), 
                 generate_default_figure(), generate_default_figure(),
                 " ", " ", " ", " ", " ",
                 'Your location is invalid. Choose a new location and click Submit', 
@@ -127,7 +135,7 @@ def update_figures(n_clicks, location):
     
     if lat is None or lon is None:
         # Handle the error: return default figures, show an error message, etc.
-        return [generate_default_figure(), generate_default_figure(), generate_default_figure(),
+        return ['', generate_default_figure(), generate_default_figure(), generate_default_figure(),
                 generate_default_figure(), generate_default_figure(), 
                 " ", " ", " ", " ", " ",
                 'Your location is invalid. Choose a new location and click Submit',
@@ -143,59 +151,34 @@ def update_figures(n_clicks, location):
     avg_prec, avg_temp, mean_max_temp, mean_min_temp, avg_rh, mean_max_rh, mean_min_rh, avg_u, avg_v, avg_tcc = compute_climatology(lat, lon, db_file='data.db')
     # Calculate prediction
     proj_avg_prec, proj_avg_temp, proj_avg_rh, proj_avg_u, proj_avg_v = compute_prediction(lat, lon, db_file='data.db')
-    # proj_avg_prec, proj_avg_temp, proj_avg_u, proj_avg_v = compute_prediction(lat, lon, db_file='data.db')
-    #TODO separare, fare due funzioni, una prediction und past data,
-    # poi unaltra funzione per sta roba qua sotto, solo che prende na lista assurda di input variables
-    ### figure comments 
-    comm_temp_and_prec = """This figure show the average monthly temperature and precipitation for the past 31 years and the forcasted
-                          values for the next 31 years. Blue and lightblue bars represent precipitation,
-                          red lines represent temperatures.
-                          Hover over the bars and lines to see the values. Click on the legend to hide\/show the data."""
+    #message 
     
-    comm_range_temp = """This figure shows the average temperature range for each month of the year.
-                        The top line shows the average maximum temperature of each month, the bottom line the averaged minima.
-                        Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
-                        When the range reaches 0 or below, a blue line highlights the freezing temperature.
-                        Hover over the lines to see the values."""
-
-    comm_range_rh = """This figure illustrates average humidity range for each month. 
-                       Blue dolif and dotted line show the average relative and forecasted relative humidity.
-                       The range delimiters show the mean of monhtly maximum and minimum relative humidity. 
-                       Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
-                       Hover over the lines to see the values.
-                       """
-
-    comm_cloud_cover = """This plot shows cloud cover changes throughout the day and throughout the year.
-                       The variaton of the grey colorscale on a column (month) shows the typical daily changes of cloud cover for that month (0% = clear sky, 100% = overcast).
-                       The differences between the columns give an idea of which months are cloudier than others.
-                       Keep in mind that we are looking at averages so even if the plot never shows clear skies (example: 12% cloud cover), clear skies are still possible.
-                       The two lines show sunrise and sunset times, adjusted for the timezone of the location as well as daylight saving times.
-                       Hover over the lines to see the values. Click on the legend to hide/show the data."""
-
-    comm_wind_rose = """Each wind direction is represented by a bar. The length of the bars show how often the wind blows from that direction (in %).
-                        The colours indicate the averaged wind speed in km/h. 
-                        WATCH OUT: The radial scale is different for each subplot to make the differences more visible.
-                        Keep in mind that these are averaged values and don't highlight particularly strong winds.
-                        Hover over the lines to see the values. Click on the legend to hide/show the data."""
-
-
-
-    message = "figure generated successfully"
+    message = ' '
+    # load descriptions of each figure and dynamic introduction text
+    text_temp_and_prec = comm_temp_and_prec()
+    text_range_temp = comm_range_temp()
+    text_range_rh = comm_range_rh()
+    text_cloud_cover = comm_cloud_cover() 
+    text_wind_rose = comm_wind_rose()
+    
+    dynamic_text = generate_dynamic_text(coords, avg_temp, avg_prec)
+    
+    # generate figures
     print('generating figures')
+
     fig_temp_and_prec = generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
-    print('f1')
+    
     fig_range_temp = generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp)
-    print('f2')
+    
     fig_range_rh = generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh, proj_avg_rh)
-    print('f3')
+    
     fig_cloud_cover = generate_fig_cloud_cover(coords, avg_tcc)
-    print('f4')
+    
     fig_wind_rose = generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v )
-    print('done')
-    return fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, \
-       comm_temp_and_prec, comm_range_temp, comm_range_rh, comm_cloud_cover, comm_wind_rose, \
-         '', \
-       False, button_style
+    
+    return dynamic_text, fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, \
+       text_temp_and_prec, text_range_temp, text_range_rh, text_cloud_cover, text_wind_rose, message, \
+         False, button_style
 
 
 

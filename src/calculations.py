@@ -9,9 +9,11 @@ import pandas as pd
 import xarray as xr
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
-import time
+import multiprocess
+import timeit
 import matplotlib
 import matplotlib.pyplot as plt
+import diskcache
 import numpy as np
 import dask
 import os
@@ -20,36 +22,61 @@ import sqlite3
 
 
 def compute_climatology(lat, lon, db_file='data.db'):
-
+    #TODO remove timers
+    
     conn = sqlite3.connect(db_file)
     datasets = {}
-    variables = ['10v', '10u', '2t', 'tp', 'tcc', 'rh']
+    # list of names of tables and columns containing the values within the tables. 2 variables needed as per CDS default the names are different 
+    tables = ['10v', '10u', '2t', 'tp', 'tcc', 'rh']
+    columns = ['v10', 'u10', 't2m', 'tp', 'tcc', 'rh']
+    tables_and_column = dict(zip(tables, columns))
 
+    #define coordinates for the creation of xarrays later on
     coordinates = ['latitude', 'longitude', 'time']
     coordinates_tp = ['latitude', 'longitude', 'time', 'step']
+    starting_time = timeit.default_timer() #####################################
 
-    # Read the data from the SQLite database
-    for var in variables:
-        #print(var)
-        query = f"""
-        SELECT * FROM [{var}_climate]
-        WHERE latitude BETWEEN {lat - 1} AND {lat + 1}
-        AND longitude BETWEEN {lon - 1} AND {lon + 1}
-        """
-        df = pd.read_sql_query(query, conn)
-        # Convert the 'time' coordinate to datetime64
-        df['time'] = pd.to_datetime(df['time'])
-        #print(df.head(1))
-        # Convert the DataFrame to an xarray Dataset
+    #Loop trough the tables with SQL querys in order to ectract the needed data for the needed lat and lon values
+    for var in tables_and_column:
+        #treat tp differently as it also needs the col steps, which the other variables dont need. Minimize number of imported cols for speed
+        col = tables_and_column[var]
+
         if var == 'tp':
+
+            query = f"""
+            SELECT time, longitude, latitude, step, [{col}]
+            FROM [{var}_climate]
+            WHERE latitude BETWEEN {lat - 1} AND {lat + 1}
+            AND longitude BETWEEN {lon - 1} AND {lon + 1}
+            """
+            # put query result into a pandas dataframe
+            df = pd.read_sql_query(query, conn)
+            # Convert the 'time' coordinate to datetime64
+            df['time'] = pd.to_datetime(df['time'])
             datasets[var] = xr.Dataset.from_dataframe(df.set_index(coordinates_tp))
-        else:
+
+        else:     
+            #Same as above but with all other tables
+            query = f"""
+            SELECT time, longitude, latitude, [{col}]
+            FROM [{var}_climate]
+            WHERE latitude BETWEEN {lat - 1} AND {lat + 1}
+            AND longitude BETWEEN {lon - 1} AND {lon + 1}
+            """
+            df = pd.read_sql_query(query, conn)
+            # Convert the 'time' coordinate to datetime64
+            df['time'] = pd.to_datetime(df['time'])
             datasets[var] = xr.Dataset.from_dataframe(df.set_index(coordinates))
 
     conn.close()
 
+    starting_time2 = timeit.default_timer() #############################
+    
+    print("SQL timer:", timeit.default_timer() - starting_time) ##############
+    
+    #Parallelize calculations for better performance
     chunksize = 600
-
+    starting_time2 = timeit.default_timer() #############################
     datasets['tp']['tp'] = datasets['tp']['tp'].chunk({'time': chunksize})
     datasets['2t']['t2m'] = datasets['2t']['t2m'].chunk({'time': chunksize})
     datasets['rh']['rh'] = datasets['rh']['rh'].chunk({'time': chunksize}) 
@@ -113,25 +140,29 @@ def compute_climatology(lat, lon, db_file='data.db'):
         #Now average the data of each hour of each month across the 30 years of data. We end up with 288 data points, representing 24 h per month
         month_hour_grouped = avg_tcc_spatial.groupby(avg_tcc_spatial['time.month'] * 100 + avg_tcc_spatial['time.hour'])
         avg_tcc = month_hour_grouped.mean(dim='time')
-
+        
+        print("climatology timer:", timeit.default_timer() - starting_time2) ###################
         print("Climatology calculated")
 
     return avg_prec, avg_temp, mean_max_temp, mean_min_temp, avg_rh, mean_max_rh, mean_min_rh, avg_u, avg_v, avg_tcc
 
 
 def compute_prediction(lat, lon, db_file='data.db'):
-
+    starting_time3 = timeit.default_timer() #############################
+    
     conn = sqlite3.connect(db_file)
 
     query = f"""SELECT * FROM prediction_data 
             WHERE lat BETWEEN {lat - 1} AND {lat + 1}
             AND lon BETWEEN {lon - 1} AND {lon + 1}
             """
+
     prediction_data = pd.read_sql_query(query, conn)
     conn.close()
+    print("SQL timer predictions:", timeit.default_timer() - starting_time3) #################################
 
     prediction_data['time']=pd.to_datetime(prediction_data['time'])
-
+    print('here')
     prediction_data[prediction_data['variable']=='precipitation_prediction']
     proj_avg_prec = prediction_data[prediction_data['variable']=='precipitation_prediction']
     proj_avg_prec = xr.Dataset.from_dataframe(proj_avg_prec.set_index(['lat', 'lon', 'time'])).groupby(
