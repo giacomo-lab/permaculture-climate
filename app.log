@@ -1,0 +1,7 @@
+root - ERROR - Error writing variable tp to database: cannot reshape array of size 65185680 into shape (33554360,)
+root - ERROR - Error writing variable tcc to database: [Errno 22] Invalid argument
+root - ERROR - Error writing variable rh to database: [Errno 22] Invalid argument
+root - ERROR - Error writing variable 2t to database: [Errno 22] Invalid argument
+root - ERROR - Error writing variable 2d to database: [Errno 22] Invalid argument
+root - ERROR - Error writing variable 10v to database: [Errno 22] Invalid argument
+root - ERROR - Error writing variable 10u to database: [Errno 22] Invalid argument

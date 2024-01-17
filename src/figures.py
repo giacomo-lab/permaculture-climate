@@ -43,7 +43,7 @@ def generate_default_figure():
     )
 
     return fig
-
+#TODO location not needed in generate_dyn_text
 def generate_dynamic_text(coords, location, avg_temp, avg_prec):
     url = f'https://api.open-elevation.com/api/v1/lookup?locations={coords.latitude},{coords.longitude}'
     response = requests.get(url)

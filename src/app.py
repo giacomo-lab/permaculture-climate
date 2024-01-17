@@ -97,6 +97,8 @@ def update_figures(n_clicks, location):
     # poi unaltra funzione per sta roba qua sotto, solo che prende na lista assurda di input variables
     #TODO get rid of message here?
     message = "figure generated successfully"
+    
+    starting_time_fig = timeit.default_timer() #############################
 
     dynamic_text = generate_dynamic_text(coords, location, avg_temp, avg_prec)
     
@@ -109,6 +111,8 @@ def update_figures(n_clicks, location):
     fig_cloud_cover = generate_fig_cloud_cover(coords, avg_tcc)
 
     fig_wind_rose = generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v )
+    
+    print("timer figures:", timeit.default_timer() - starting_time_fig) #################################
 
     return dynamic_text, fig_temp_and_prec, fig_range_temp, fig_range_rh, fig_cloud_cover, fig_wind_rose, message
 
@@ -135,9 +139,9 @@ def get_coordinates(location):
 
 if __name__ == '__main__':
     # Profile the main function using cProfile
-    n_clicks = 1
-    location = 'Puebla de don Fadrique'
-    cProfile.runctx('update_figures(n_clicks, location)', globals(), locals(), filename='profile_results')
+    #n_clicks = 1
+    #location = 'Puebla de don Fadrique'
+    #cProfile.runctx('update_figures(n_clicks, location)', globals(), locals(), filename='profile_results')
 
     # Run the Flask app with debug mode
     app.run_server(debug=True)
