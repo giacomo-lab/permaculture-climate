@@ -6,47 +6,46 @@ import dask
 import dask.dataframe as dd
 import logging
 
-# Set up logging
-#logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
-
+#Set up logging
+logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 #List of NetCDF files and corresponding variable names
-#files = [('src/data/prediction_data/eastward_near_surface_wind-ssp2_4_5_2016_2046.nc', 'u_wind'),
-#         ('src/data/prediction_data/northward_near_surface_wind-ssp2_4_5_2016_2046.nc', 'v_wind'),
-#         ('src/data/prediction_data/precipitation-ssp2_4_5_2016_2046.nc', 'precipitation'),
-#         ('src/data/prediction_data/near_surface_relative_humidity-ssp2_4_5_2016_2046.nc', 'relative_humidity'),
-#         ('src/data/prediction_data/near_surface_air_temperature-ssp2_4_5_2016_2046.nc', 'temperature')
-#         ]
-#
-## Initialize an empty DataFrame
-#df_all = pd.DataFrame()
-#
-#for file, variable in files:
-#    try:
-#        # Load NetCDF file
-#        ds = xr.open_dataset(file)
-#        ds = ds.drop_vars(['lat_bnds', 'lon_bnds', 'time_bnds'])
-#
-#        # Convert to DataFrame and reset index to flatten the data
-#        df = ds.to_dataframe().reset_index()
-#
-#        # Add a column for the variable name
-#        df['variable'] = variable + '_prediction'
-#
-#        # Concatenate the DataFrame with the main DataFrame
-#        df_all = pd.concat([df_all, df])
-#        df_all['lon'] = df_all['lon'].apply(lambda x: x-360 if x > 180 else x)
-#    except Exception as e:
-#        logging.error('Error processing file %s: %s', file, e)
-## Create a SQLite database
+files = [('src/data/prediction_data/eastward_near_surface_wind-ssp2_4_5_2016_2046.nc', 'u_wind'),
+         ('src/data/prediction_data/northward_near_surface_wind-ssp2_4_5_2016_2046.nc', 'v_wind'),
+         ('src/data/prediction_data/precipitation-ssp2_4_5_2016_2046.nc', 'precipitation'),
+         ('src/data/prediction_data/near_surface_relative_humidity-ssp2_4_5_2016_2046.nc', 'relative_humidity'),
+         ('src/data/prediction_data/near_surface_air_temperature-ssp2_4_5_2016_2046.nc', 'temperature')
+         ]
+
+# Initialize an empty DataFrame
+df_all = pd.DataFrame()
+
+for file, variable in files:
+    try:
+        # Load NetCDF file
+        ds = xr.open_dataset(file)
+        ds = ds.drop_vars(['lat_bnds', 'lon_bnds', 'time_bnds'])
+
+        # Convert to DataFrame and reset index to flatten the data
+        df = ds.to_dataframe().reset_index()
+
+        # Add a column for the variable name
+        df['variable'] = variable + '_prediction'
+
+        # Concatenate the DataFrame with the main DataFrame
+        df_all = pd.concat([df_all, df])
+        df_all['lon'] = df_all['lon'].apply(lambda x: x-360 if x > 180 else x)
+    except Exception as e:
+        logging.error('Error processing file %s: %s', file, e)
+# Create a SQLite database
 with sqlite3.connect('data.db') as conn:
     # Store the DataFrame in SQLite table
-    #df_all.to_sql('prediction_data', conn, if_exists='replace', index=False)
+    df_all.to_sql('prediction_data', conn, if_exists='replace', index=False)
 
     #print('Prediction_data table created successfully.')
 
     # Open the GRIB file
     print('opening GRIB file')
-    filename = "src/data/past_climate_EU.grib"
+    filename = "src/data/past_climate.grib"
     variables = ['tp', 'tcc', 'rh', '2t','2d','10v', '10u'] 
 #    variables = ['tcc', 'rh', '2t','2d','10v', '10u'] 
     datasets = {}

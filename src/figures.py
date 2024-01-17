@@ -15,7 +15,6 @@ from datetime import datetime
 import timezonefinder
 from astral.sun import sun
 from astral.location import LocationInfo
-import requests
 from figures import *
 from calculations import *
 
@@ -43,25 +42,9 @@ def generate_default_figure():
     )
 
     return fig
-#TODO location not needed in generate_dyn_text
-def generate_dynamic_text(coords, location, avg_temp, avg_prec):
-    url = f'https://api.open-elevation.com/api/v1/lookup?locations={coords.latitude},{coords.longitude}'
-    response = requests.get(url)
-    data = response.json()
-    elevation = data['results'][0]['elevation']
 
-    months = [
-        "January", "February", "March", "April",
-        "May", "June", "July", "August",
-        "September", "October", "November", "December"
-    ]
-    text = (f"""
-    {coords.address.split(',')[0].strip()}, is located at an altitude of {int(elevation)} m above sea level.
-    {months[np.argmin(avg_temp.values)]} is the coldest month with an average of {int(min(avg_temp.values))} °C, while {months[np.argmax(avg_temp.values)]} is the hottest ({int(max(avg_temp.values))} °C).
-    On average, {int(sum(avg_prec.values))} mm of rain falls every year, 
-    with {months[np.argmax(avg_prec.values)]} beeing the wettest and {months[np.argmin(avg_prec.values)]} the driest month.    
-    """)
-    return text
+
+
 
 def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp):
 
@@ -130,16 +113,16 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
                         )
     
     # Add a text on the bottom of the figure
-    fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past 31 years and the 
-                       <br>forcasted values for the next 31 years. 
-                       <br>Blue and lightblue bars represent precipitation, red lines represent temperatures.
-                       <br>Hover over the bars and lines to see the values. Click on the legend to hide/show the data.""",
-                        xref='paper', yref='paper',
-                        x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-                        showarrow=False,
-                        align='left',  # Set align to 'left'
-                        font=dict(size=12, color='black'),
-                        )
+    #fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past 31 years and the 
+    #                   <br>forcasted values for the next 31 years. 
+    #                   <br>Blue and lightblue bars represent precipitation, red lines represent temperatures.
+    #                   <br>Hover over the bars and lines to see the values. Click on the legend to hide/show the data.""",
+    #                    xref='paper', yref='paper',
+    #                    x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
+    #                    showarrow=False,
+    #                    align='left',  # Set align to 'left'
+    #                    font=dict(size=12, color='black'),
+    #                    )
     
     return fig
 
@@ -214,18 +197,18 @@ def generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp):
                       )
 
     # Add text within the figure
-    fig.add_annotation(text="""This figure shows the average temperature range for each month of the year.
-                       <br>The top line shows the average maximum temperature of each month, the bottom line the averaged minima.
-                        <br>Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
-                        <br>When the range reaches 0 or below, a blue line highlights the freezing temperature.
-                        <br>Hover over the lines to see the values.
-                        """,
-                        xref='paper', yref='paper',
-                        x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-                        showarrow=False,
-                        align='left',
-                        font=dict(size=12, color='black')
-                        )
+    #fig.add_annotation(text="""This figure shows the average temperature range for each month of the year.
+    #                   <br>The top line shows the average maximum temperature of each month, the bottom line the averaged minima.
+    #                    <br>Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
+    #                    <br>When the range reaches 0 or below, a blue line highlights the freezing temperature.
+    #                    <br>Hover over the lines to see the values.
+    #                    """,
+    #                    xref='paper', yref='paper',
+    #                    x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
+    #                    showarrow=False,
+    #                    align='left',
+    #                    font=dict(size=12, color='black')
+    #                    )
 
     # Adjust the bottom margin to create more space below the figure
     fig.update_layout(margin=dict(b=200))
@@ -312,18 +295,18 @@ def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh, proj_avg_hum):
                      ),
                       )
     # Add text within the figure
-    fig.add_annotation(text="""This figure illustrates average humidity range for each month. 
-                       <br>Blue dolif and dotted line show the average relative and forecasted relative humidity.
-                       <br>The range delimiters show the mean of monhtly maximum and minimum relative humidity. 
-                       <br>Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
-                       <br>Hover over the lines to see the values.
-                       """,
-                        xref='paper', yref='paper',
-                        x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-                        showarrow=False,
-                        align='left',
-                        font=dict(size=12, color='black')
-                        )
+    #fig.add_annotation(text="""This figure illustrates average humidity range for each month. 
+    #                   <br>Blue dolif and dotted line show the average relative and forecasted relative humidity.
+    #                   <br>The range delimiters show the mean of monhtly maximum and minimum relative humidity. 
+    #                   <br>Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
+    #                   <br>Hover over the lines to see the values.
+    #                   """,
+    #                    xref='paper', yref='paper',
+    #                    x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
+    #                    showarrow=False,
+    #                    align='left',
+    #                    font=dict(size=12, color='black')
+    #                    )
 
     # Adjust the bottom margin to create more space below the figure
     fig.update_layout(margin=dict(b=200))
@@ -426,21 +409,21 @@ def generate_fig_cloud_cover(coords, avg_tcc):
 
 
     # Figure description text
-    fig.add_annotation(text="""
-                       <br>This plot shows cloud cover changes throughout the day and throughout the year.
-                       <br>The variaton of the grey colorscale on a column (month) shows the typical daily changes of cloud cover for that month (0% = clear sky, 100% = overcast).
-                       <br>The differences between the columns give an idea of which months are cloudier than others.
-                       <br>Keep in mind that we are looking at averages so even if the plot never shows clear skies (example: 12% cloud cover), clear skies are still possible.
-                       <br>The two lines show sunrise and sunset times, adjusted for the timezone of the location as well as daylight saving times.
-                       <br>Hover over the lines to see the values. Click on the legend to hide/show the data.
-
-                       """,
-                        xref='paper', yref='paper',
-                        x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend 
-                        showarrow=False,
-                        align='left',
-                        font=dict(size=12, color='black')
-                        )
+    #fig.add_annotation(text="""
+    #                   <br>This plot shows cloud cover changes throughout the day and throughout the year.
+    #                   <br>The variaton of the grey colorscale on a column (month) shows the typical daily changes of cloud cover for that month (0% = clear sky, 100% = overcast).
+    #                   <br>The differences between the columns give an idea of which months are cloudier than others.
+    #                   <br>Keep in mind that we are looking at averages so even if the plot never shows clear skies (example: 12% cloud cover), clear skies are still possible.
+    #                   <br>The two lines show sunrise and sunset times, adjusted for the timezone of the location as well as daylight saving times.
+    #                   <br>Hover over the lines to see the values. Click on the legend to hide/show the data.
+#
+    #                   """,
+    #                    xref='paper', yref='paper',
+    #                    x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend 
+    #                    showarrow=False,
+    #                    align='left',
+    #                    font=dict(size=12, color='black')
+    #                    )
 
     # Adjust the bottom margin to create more space below the figure
     fig.update_layout(margin=dict(b=200))
@@ -593,19 +576,19 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
 
 
     # Add text within the figure
-    fig.add_annotation(text="""Each wind direction is represented by a bar. The length of the bars show how often the wind blows from that direction (in %).
-                        <br>The colours indicate the averaged wind speed in km/h. 
-                        <br>WATCH OUT: The radial scale is different for each subplot to make the differences more visible.
-                        <br>Keep in mind that these are averaged values and don't highlight particularly strong winds.
-                        <br>Hover over the lines to see the values. Click on the legend to hide/show the data.
-
-                       """,
-                        xref='paper', yref='paper',
-                        x=0.04, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-                        showarrow=False,
-                        align='left',
-                        font=dict(size=12, color='black')
-                        )
+    #fig.add_annotation(text="""Each wind direction is represented by a bar. The length of the bars show how often the wind blows from that direction (in %).
+    #                    <br>The colours indicate the averaged wind speed in km/h. 
+    #                    <br>WATCH OUT: The radial scale is different for each subplot to make the differences more visible.
+    #                    <br>Keep in mind that these are averaged values and don't highlight particularly strong winds.
+    #                    <br>Hover over the lines to see the values. Click on the legend to hide/show the data.
+#
+    #                   """,
+    #                    xref='paper', yref='paper',
+    #                    x=0.04, y=-0.5,  # Adjust this value to position the text below the x-axis legend
+    #                    showarrow=False,
+    #                    align='left',
+    #                    font=dict(size=12, color='black')
+    #                    )
 
     # Adjust the bottom margin to create more space below the figure
     fig.update_layout(margin=dict(b=200))
