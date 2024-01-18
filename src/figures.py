@@ -97,7 +97,7 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
 
 
     # Set the layout to have two y-axes
-    fig.update_layout(title='Temperature and precipitation (past and forcasted)',
+    fig.update_layout(#title='Temperature and precipitation (past and forcasted)',
                       yaxis=dict(title='Precipitation (mm)', tickfont=dict(size=14)),  # Make the tick labels bigger
                       yaxis2=dict(title='Temperature (°C)', overlaying='y', side='right', tickfont=dict(size=14)),  # Make the tick labels bigger
                       xaxis=dict(tickmode='array',
@@ -182,7 +182,7 @@ def generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp):
     else:
         fig.update_yaxes(range=[min(df['min_temp']) - padding, max(df['max_temp']) + padding])
 
-    fig.update_layout(title='Average temperature range',
+    fig.update_layout(#title='Average temperature range',
                       yaxis=dict(title='Temperature (°C)', tickfont=dict(size=14)),
                       xaxis=dict(
                           tickmode='array',
@@ -275,7 +275,7 @@ def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh, proj_avg_hum):
     fig.update_yaxes(range=[min(df['min_rh']) - padding, max(df['max_rh']) + padding])
 
     # Set the layout
-    fig.update_layout(title='Average relative humidity range',
+    fig.update_layout(#title='Average relative humidity range',
                       title_x=0.075,
                       yaxis=dict(title='Relative humidity (%)',
                                  tickfont=dict(size=14)
@@ -392,7 +392,7 @@ def generate_fig_cloud_cover(coords, avg_tcc):
                   )
 
     # Update layout to show custom line in legend and set title and x axis
-    fig.update_layout(title='Monthly hourly mean cloud cover with sunrise and sunset times',
+    fig.update_layout(#title='Monthly hourly mean cloud cover with sunrise and sunset times',
                       title_x=0.075,
                       yaxis_title='Hour of the day',
                       showlegend=True,
