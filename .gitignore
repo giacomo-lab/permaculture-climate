@@ -1,8 +1,17 @@
 #ignore file with thie extension
 *.grib
 *.idx
-*.zip
-prediction_data/
 *.DS_Store
-*.grib
-*.idx
+*.zip
+*.nc
+*.db
+src/data/prediction_data
+src/*.zip
+src/*.db
+src/*.grib
+src/*.idx
+app.log
+cache/
+src/_pycache_
+profile_results
+test.ipynb
