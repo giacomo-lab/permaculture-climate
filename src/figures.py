@@ -12,6 +12,7 @@ from calculations import *
 
 
 def generate_default_figure():
+    #generate a placeholder figure 
     fig = go.Figure()
 
     fig.add_annotation(
@@ -20,15 +21,15 @@ def generate_default_figure():
     text="""PLACEHOLDER GRAPH <br> please insert location""",
     showarrow=False,
     font_size=24,
-    textangle=-45,  # Rotate text by 45 degrees
-    opacity=0.5,  # Set transparency (0 is fully transparent, 1 is fully opaque)
-    bordercolor="black",  # Border color
-    borderwidth=2,  # Border width
-    borderpad=4  # Padding around the border
+    textangle=-45,  
+    opacity=0.5,  
+    bordercolor="black",  
+    borderwidth=2, 
+    borderpad=4 
 )
     fig.update_layout(
-        xaxis=dict(range=[0, 10], showgrid=False, showticklabels=False),  # Adjust the range as needed
-        yaxis=dict(range=[0, 20], showgrid=False, showticklabels=False),  # Adjust the range as needed
+        xaxis=dict(range=[0, 10], showgrid=False, showticklabels=False),  
+        yaxis=dict(range=[0, 20], showgrid=False, showticklabels=False),  
         template='simple_white'
     )
 
@@ -66,7 +67,7 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
                              mode='lines', 
                              name='Temperature', 
                              opacity=0.85,
-                             line=dict(color='red', width=3),  # Make the line thicker
+                             line=dict(color='red', width=3),  
                              hovertemplate=('%{x}: %{y:.0f} °C <extra></extra>')
                              ),
                     secondary_y=True
@@ -80,7 +81,7 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
                              line_dash='dash',
                              line_width=3,
                              name='Forcasted temperature', 
-                             line=dict(color='red', width=3),  # Make the line thicker
+                             line=dict(color='red', width=3), 
                              hovertemplate=('%{x}: %{y:.0f} °C <extra></extra>')
                              ),   
                 secondary_y=True,
@@ -88,33 +89,18 @@ def generate_fig_temp_and_prec(avg_prec, avg_temp, proj_avg_prec, proj_avg_temp)
 
 
     # Set the layout to have two y-axes
-    fig.update_layout(title='Temperature and precipitation (past and forcasted)',
-                      yaxis=dict(title='Precipitation (mm)', tickfont=dict(size=14)),  # Make the tick labels bigger
-                      yaxis2=dict(title='Temperature (°C)', overlaying='y', side='right', tickfont=dict(size=14)),  # Make the tick labels bigger
+    fig.update_layout(yaxis=dict(title='Precipitation (mm)', tickfont=dict(size=14)),  
+                      yaxis2=dict(title='Temperature (°C)', overlaying='y', side='right', tickfont=dict(size=14)),  
                       xaxis=dict(tickmode='array',
                                  tickvals=avg_temp.month,
                                  ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
                                  tickangle=-45,
-                                 tickfont=dict(size=14)  # Make the tick labels bigger
+                                 tickfont=dict(size=14) 
                                  ),
                         template='simple_white',
-                        width=1075,  # Set the figure width
-                        height=600,  # Set the figure height
-                        margin=dict(b=200) # Adjust the bottom margin to create more space below the figure
-                        )
-    
-    # Add a text on the bottom of the figure
-    #fig.add_annotation(text=f"""This figure show the average monthly temperature and precipitation for the past 31 years and the 
-    #                   <br>forcasted values for the next 31 years. 
-    #                   <br>Blue and lightblue bars represent precipitation, red lines represent temperatures.
-    #                   <br>Hover over the bars and lines to see the values. Click on the legend to hide/show the data.""",
-    #                    xref='paper', yref='paper',
-    #                    x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-    #                    showarrow=False,
-    #                    align='left',  # Set align to 'left'
-    #                    font=dict(size=12, color='black'),
-    #                    )
-    
+                        width=1075, 
+                        height=600,  
+                        )    
     return fig
 
 
@@ -173,8 +159,7 @@ def generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp):
     else:
         fig.update_yaxes(range=[min(df['min_temp']) - padding, max(df['max_temp']) + padding])
 
-    fig.update_layout(title='Average temperature range',
-                      yaxis=dict(title='Temperature (°C)', tickfont=dict(size=14)),
+    fig.update_layout(yaxis=dict(title='Temperature (°C)', tickfont=dict(size=14)),
                       xaxis=dict(
                           tickmode='array',
                           tickvals=df['month'],
@@ -186,20 +171,6 @@ def generate_fig_range_temp(avg_temp, mean_max_temp, mean_min_temp):
                       height=600,
                       template='simple_white',
                       )
-
-    # Add text within the figure
-    #fig.add_annotation(text="""This figure shows the average temperature range for each month of the year.
-    #                   <br>The top line shows the average maximum temperature of each month, the bottom line the averaged minima.
-    #                    <br>Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
-    #                    <br>When the range reaches 0 or below, a blue line highlights the freezing temperature.
-    #                    <br>Hover over the lines to see the values.
-    #                    """,
-    #                    xref='paper', yref='paper',
-    #                    x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-    #                    showarrow=False,
-    #                    align='left',
-    #                    font=dict(size=12, color='black')
-    #                    )
 
     # Adjust the bottom margin to create more space below the figure
     fig.update_layout(margin=dict(b=200))
@@ -266,9 +237,7 @@ def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh, proj_avg_hum):
     fig.update_yaxes(range=[min(df['min_rh']) - padding, max(df['max_rh']) + padding])
 
     # Set the layout
-    fig.update_layout(title='Average relative humidity range',
-                      title_x=0.075,
-                      yaxis=dict(title='Relative humidity (%)',
+    fig.update_layout(yaxis=dict(title='Relative humidity (%)',
                                  tickfont=dict(size=14)
                                  ),
                       yaxis_title_font=dict(size=16), 
@@ -282,25 +251,9 @@ def generate_fig_range_rh(avg_rh, mean_max_rh, mean_min_rh, proj_avg_hum):
                       height=600,
                       template='simple_white',
                           legend=dict(
-                       traceorder='normal',  # 'normal' or 'reversed'
+                       traceorder='normal', 
                      ),
                       )
-    # Add text within the figure
-    #fig.add_annotation(text="""This figure illustrates average humidity range for each month. 
-    #                   <br>Blue dolif and dotted line show the average relative and forecasted relative humidity.
-    #                   <br>The range delimiters show the mean of monhtly maximum and minimum relative humidity. 
-    #                   <br>Keep in mind that these are averaged values, maximum and minimum temperatures can be outside of the plotted range.
-    #                   <br>Hover over the lines to see the values.
-    #                   """,
-    #                    xref='paper', yref='paper',
-    #                    x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-    #                    showarrow=False,
-    #                    align='left',
-    #                    font=dict(size=12, color='black')
-    #                    )
-
-    # Adjust the bottom margin to create more space below the figure
-    fig.update_layout(margin=dict(b=200))
 
     # Show the figure
     fig.update_traces(hovertemplate='%{x}: %{y:.0f} % <extra></extra>')
@@ -344,8 +297,8 @@ def generate_fig_cloud_cover(coords, avg_tcc):
                              colorscale='gray_r',
                              colorbar=dict(
                              title="Cloud Cover [%]",
-                             y=0.4,  # Position of the bottom of the colorbar
-                             len=0.75  # Length of the colorbar
+                             y=0.4,  
+                             len=0.75  
                              ),
                              hovertemplate='Month: %{x}<br>Time:%{y}:00<br>Cloud Cover: %{z:.0f}%<extra></extra>',  # Custom hover text
                             )
@@ -355,7 +308,7 @@ def generate_fig_cloud_cover(coords, avg_tcc):
     fig.update_xaxes(tickvals=list(range(12)),
                      ticktext=[f"{month_name}" for month_name in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]],
                      tickmode='array',  # Use 'array' for custom tickvals and ticktext
-                     tickangle=-45,  # Rotate tick labels for better readability
+                     tickangle=-45,  
                      )
 
     # Set x-axis tickvals and ticktext for each day of the month
@@ -383,11 +336,9 @@ def generate_fig_cloud_cover(coords, avg_tcc):
                   )
 
     # Update layout to show custom line in legend and set title and x axis
-    fig.update_layout(title='Monthly hourly mean cloud cover with sunrise and sunset times',
-                      title_x=0.075,
-                      yaxis_title='Hour of the day',
+    fig.update_layout(yaxis_title='Hour of the day',
                       showlegend=True,
-                      legend_font=dict(size=14),  #  set the legend font size
+                      legend_font=dict(size=14),  
                       yaxis_title_font=dict(size=16), 
                       legend=dict(x=1.02, y=1),
                       yaxis=dict(dtick=2,
@@ -397,29 +348,6 @@ def generate_fig_cloud_cover(coords, avg_tcc):
                       width=1075,
                       height=600,
                       )
-
-
-    # Figure description text
-    #fig.add_annotation(text="""
-    #                   <br>This plot shows cloud cover changes throughout the day and throughout the year.
-    #                   <br>The variaton of the grey colorscale on a column (month) shows the typical daily changes of cloud cover for that month (0% = clear sky, 100% = overcast).
-    #                   <br>The differences between the columns give an idea of which months are cloudier than others.
-    #                   <br>Keep in mind that we are looking at averages so even if the plot never shows clear skies (example: 12% cloud cover), clear skies are still possible.
-    #                   <br>The two lines show sunrise and sunset times, adjusted for the timezone of the location as well as daylight saving times.
-    #                   <br>Hover over the lines to see the values. Click on the legend to hide/show the data.
-#
-    #                   """,
-    #                    xref='paper', yref='paper',
-    #                    x=0, y=-0.5,  # Adjust this value to position the text below the x-axis legend 
-    #                    showarrow=False,
-    #                    align='left',
-    #                    font=dict(size=12, color='black')
-    #                    )
-
-    # Adjust the bottom margin to create more space below the figure
-    fig.update_layout(margin=dict(b=200))
-
-
 
     return fig
 
@@ -431,14 +359,12 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
     
     #convert to km/h
     wind_speed = wind_speed*3.6
-
     
     # Calculate wind direction (see: https://confluence.ecmwf.int/pages/viewpage.action?pageId=133262398)
     wind_direction = np.mod(180 + np.arctan2(avg_u, avg_v) * (180 / np.pi), 360)
 
     #prepare the data for the wind rose
     df = pd.DataFrame({'speed': wind_speed.values, 'direction': wind_direction.values})
-    print('done dataframe 1')
     bins_dir = np.linspace(0, 360, 9)
     labels_dir = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     labels_speed = ["0-5", "5-10", "10-15", "15-20", "20-25", "25+"]
@@ -463,16 +389,9 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
     # Calculate wind direction (see: https://confluence.ecmwf.int/pages/viewpage.action?pageId=133262398)
     wind_direction_proj = np.mod(180 + np.arctan2(proj_avg_u, proj_avg_v) * (180 / np.pi), 360)
 
-    print(type(wind_direction_proj))
-    print(type(wind_speed_proj))
-    #wind_speed_proj = wind_speed_proj.to_array()
-    #wind_direction_proj = wind_direction_proj.to_array()
-    #print(type(wind_direction_proj))
-    #print(type(wind_speed_proj))
-    print('Im here')
     #prepare the data for the wind rose
     df_proj = pd.DataFrame({'speed': wind_speed_proj, 'direction': wind_direction_proj})
-    print('done')
+
     bins_dir = np.linspace(0, 360, 9)
     labels_dir = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     labels_speed = ["0-5", "5-10", "10-15", "15-20", "20-25", "25+"]
@@ -510,8 +429,7 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
                        color='speed', 
                        template='simple_white', 
                        color_discrete_map=color_scale
-                       #color_discrete_sequence= px.colors.sequential.Viridis_r
-                       )  # Use the color map
+                       )  
 
     # Create the second wind rose chart
     fig2 = px.bar_polar(frequency_df_pred, 
@@ -520,8 +438,7 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
                        color='speed', 
                        template='simple_white', 
                        color_discrete_map=color_scale
-                       #color_discrete_sequence= px.colors.sequential.Viridis_r
-                       )  # Use the color map
+                       )  
 
     # Add all traces from the first wind rose chart to the subplot
     for trace in fig1.data:
@@ -537,10 +454,10 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
     fig.update_layout(
         width = 1000,
         height = 600,
-        polar_radialaxis_showgrid=True,  # Show radial grid
-        polar_angularaxis_showgrid=False,  # Show angular grid
-        polar_angularaxis_direction='clockwise',  # Set the direction to 'clockwise'
-        polar_angularaxis_rotation=90,  # Rotate the direction by 90 degrees
+        polar_radialaxis_showgrid=True,  
+        polar_angularaxis_showgrid=False,  
+        polar_angularaxis_direction='clockwise', 
+        polar_angularaxis_rotation=90,  
         polar_radialaxis_tickformat='.0%',  # Display the radial axis labels as percentages
         polar=dict(domain=dict(x=[0, 0.46])), # Specify the domain of the first subplot
         template = template
@@ -550,40 +467,18 @@ def generate_fig_wind_rose(avg_u, avg_v, proj_avg_u, proj_avg_v):
     fig.update_layout(
         legend=dict(orientation="v",  # Horizontal orientation
                     yanchor="middle",
-                    y=0.5,  # Adjust this value to move the legend up
+                    y=0.5, 
                     xanchor="center",
-                    x=0.5 # Adjust this value to move the legend to the right
+                    x=0.5 
                     ),
         polar2_angularaxis=dict(gridcolor='white'),
-        polar2_radialaxis_showgrid=True,  # Show radial grid
-        polar2_angularaxis_showgrid=False,  # Show angular grid
-        polar2_angularaxis_direction='clockwise',  # Set the direction to 'clockwise'
-        polar2_angularaxis_rotation=90,  # Rotate the direction by 90 degrees
+        polar2_radialaxis_showgrid=True,  
+        polar2_angularaxis_showgrid=False,  
+        polar2_angularaxis_direction='clockwise',  
+        polar2_angularaxis_rotation=90,  
         polar2_radialaxis_tickformat='.0%',  # Display the radial axis labels as percentages
         polar2=dict(domain=dict(x=[0.54, 1])),  # Specify the domain of the second subplot
         template = template
     )
-
-
-
-    # Add text within the figure
-    #fig.add_annotation(text="""Each wind direction is represented by a bar. The length of the bars show how often the wind blows from that direction (in %).
-    #                    <br>The colours indicate the averaged wind speed in km/h. 
-    #                    <br>WATCH OUT: The radial scale is different for each subplot to make the differences more visible.
-    #                    <br>Keep in mind that these are averaged values and don't highlight particularly strong winds.
-    #                    <br>Hover over the lines to see the values. Click on the legend to hide/show the data.
-#
-    #                   """,
-    #                    xref='paper', yref='paper',
-    #                    x=0.04, y=-0.5,  # Adjust this value to position the text below the x-axis legend
-    #                    showarrow=False,
-    #                    align='left',
-    #                    font=dict(size=12, color='black')
-    #                    )
-
-    # Adjust the bottom margin to create more space below the figure
-    fig.update_layout(margin=dict(b=200))
-
- 
 
     return fig

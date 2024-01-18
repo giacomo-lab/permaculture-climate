@@ -1,1 +1,17 @@
-This is some text
+## Overwiew
+
+Here we present a project in which we donwload climate data from the past as well as a forecast model from CDS. We use the data to create graphs specific to a location of your choosing. THe aim of these graphs is to aid you in decisions related to a permaculture project.
+
+There are two versions of the project you can use. One is a jupyter notebook (perma-climate.ipynb). This works by itself, contains the necessary API request, does all calculations and gives you 5 graphs with climate data.
+
+The other is a dashboard app contained in the src folder. Here you download a database for Europe (API_europe.ipynb) once and convert it to a SQL database (create_db.py). Launch the dashboard from a terminal, open it in your browser, submit a location within Europe and wait for the figures to be generated. 
+
+## Configuration
+
+Install all packages included in the requirements using an environment manager of your choice. \
+Before downloading data from CDS you need to register on the website and get a key. Instructions can be found [here](https://cds.climate.copernicus.eu/api-how-to).
+Once the database is created and app.py is launched, copy the URL given in the terminal into a new browser tab and wait for the dashoboard to load. 
+
+
+## Credits
+This project was a collaborative effort between Matthias Bressan and Giacomo Labbri

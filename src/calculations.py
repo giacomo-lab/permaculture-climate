@@ -2,16 +2,15 @@ import dask
 import pandas as pd
 import xarray as xr
 from geopy.geocoders import Nominatim
-import timeit
-import dask
+import time
 import sqlite3
 
 
 def compute_climatology(lat, lon, db_file='data.db'):
-    #TODO remove timers
-    
+   
     conn = sqlite3.connect(db_file)
     datasets = {}
+    
     # list of names of tables and columns containing the values within the tables. 2 variables needed as per CDS default the names are different 
     tables = ['10v', '10u', '2t', 'tp', 'tcc', 'rh']
     columns = ['v10', 'u10', 't2m', 'tp', 'tcc', 'rh']
@@ -20,9 +19,8 @@ def compute_climatology(lat, lon, db_file='data.db'):
     #define coordinates for the creation of xarrays later on
     coordinates = ['latitude', 'longitude', 'time']
     coordinates_tp = ['latitude', 'longitude', 'time', 'step']
-    starting_time = timeit.default_timer() #####################################
 
-    #Loop trough the tables with SQL querys in order to ectract the needed data for the needed lat and lon values
+    #Loop trough the tables with SQL querys in order to ectract the needed data for specified lat and lon values
     for var in tables_and_column:
         #treat tp differently as it also needs the col steps, which the other variables dont need. Minimize number of imported cols for speed
         col = tables_and_column[var]
@@ -56,13 +54,8 @@ def compute_climatology(lat, lon, db_file='data.db'):
 
     conn.close()
 
-    starting_time2 = timeit.default_timer() #############################
-    
-    print("SQL timer:", timeit.default_timer() - starting_time) ##############
-    
     #Parallelize calculations for better performance
     chunksize = 600
-    starting_time2 = timeit.default_timer() #############################
     datasets['tp']['tp'] = datasets['tp']['tp'].chunk({'time': chunksize})
     datasets['2t']['t2m'] = datasets['2t']['t2m'].chunk({'time': chunksize})
     datasets['rh']['rh'] = datasets['rh']['rh'].chunk({'time': chunksize}) 
@@ -127,15 +120,13 @@ def compute_climatology(lat, lon, db_file='data.db'):
         month_hour_grouped = avg_tcc_spatial.groupby(avg_tcc_spatial['time.month'] * 100 + avg_tcc_spatial['time.hour'])
         avg_tcc = month_hour_grouped.mean(dim='time')
         
-        print("climatology timer:", timeit.default_timer() - starting_time2) ###################
         print("Climatology calculated")
 
     return avg_prec, avg_temp, mean_max_temp, mean_min_temp, avg_rh, mean_max_rh, mean_min_rh, avg_u, avg_v, avg_tcc
 
 
 def compute_prediction(lat, lon, db_file='data.db'):
-    starting_time3 = timeit.default_timer() #############################
-    
+    #Load predictions from database for specified coordinates
     conn = sqlite3.connect(db_file)
 
     query = f"""SELECT * FROM prediction_data 
@@ -145,23 +136,27 @@ def compute_prediction(lat, lon, db_file='data.db'):
 
     prediction_data = pd.read_sql_query(query, conn)
     conn.close()
-    print("SQL timer predictions:", timeit.default_timer() - starting_time3) #################################
 
+    #convert data to datetime
     prediction_data['time']=pd.to_datetime(prediction_data['time'])
-    print('here')
+    
+    # calculate precipitation
     prediction_data[prediction_data['variable']=='precipitation_prediction']
     proj_avg_prec = prediction_data[prediction_data['variable']=='precipitation_prediction']
     proj_avg_prec = xr.Dataset.from_dataframe(proj_avg_prec.set_index(['lat', 'lon', 'time'])).groupby(
         'time.month').mean(['time', 'lat', 'lon'])['pr']*2592000
 
+    # Temperature
     proj_avg_temp = prediction_data[prediction_data['variable']=='temperature_prediction']
     proj_avg_temp = xr.Dataset.from_dataframe(proj_avg_temp.set_index(['lat', 'lon', 'time'])).groupby(
         'time.month').mean(['time', 'lat', 'lon'])['tas']-273.15
 
+    # Relative humidity
     proj_avg_rh = prediction_data[prediction_data['variable']=='relative_humidity_prediction']
     proj_avg_rh = xr.Dataset.from_dataframe(proj_avg_rh.set_index(['lat', 'lon', 'time'])).groupby(
         'time.month').mean(['time', 'lat', 'lon'])['hurs']
 
+    # Wind speed and direction
     proj_avg_u = prediction_data[prediction_data['variable']=='u_wind_prediction']
     proj_avg_u = xr.Dataset.from_dataframe(proj_avg_u.set_index(['lat', 'lon', 'time'])).groupby(
         'time.month').mean(['time', 'lat', 'lon'])['uas']
@@ -171,3 +166,23 @@ def compute_prediction(lat, lon, db_file='data.db'):
         'time.month').mean(['time', 'lat', 'lon'])['vas']
     
     return proj_avg_prec, proj_avg_temp, proj_avg_rh, proj_avg_u, proj_avg_v
+
+
+
+def get_coordinates(location):
+    # get coordinates using Nominatim
+    geolocator = Nominatim(user_agent="permaculture-climate")
+    try:
+        location = geolocator.geocode(location)
+        time.sleep(1)
+        return location
+    except GeocoderTimedOut:
+        print("Error: geocode failed on input %s with message TIMEOUT" % (location))
+        return None
+    except GeocoderUnavailable:
+        print("Error: geocode failed on input %s with message SERVICE_UNAVAILABLE" % (location))
+        return None
+    except:
+        print("Error: geocode failed on input %s with message UNKNOWN_ERROR" % (location))
+        return None
+    
