@@ -1,21 +1,12 @@
-import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import pandas as pd
-import xarray as xr
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
-import matplotlib.pyplot as plt
 import numpy as np
-from geopy.geocoders import Nominatim
 from datetime import datetime
 import timezonefinder
 from astral.sun import sun
 from astral.location import LocationInfo
-from figures import *
 from calculations import *
 
 

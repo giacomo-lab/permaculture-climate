@@ -10,5 +10,8 @@ src/*.zip
 src/*.db
 src/*.grib
 src/*.idx
+src/*.log
+cache/
+src/_pycache_
 profile_results
 test.ipynb
