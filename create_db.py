@@ -37,6 +37,7 @@ for file, variable in files:
     except Exception as e:
         logging.error('Error processing file %s: %s', file, e)
 # Create a SQLite database
+        
 with sqlite3.connect('data.db') as conn:
     # Store the DataFrame in SQLite table
     df_all.to_sql('prediction_data', conn, if_exists='replace', index=False)
