@@ -1,0 +1,7 @@
+root - ERROR - Error writing variable tp to database: table tp_climate has no column named index
+root - ERROR - Error writing variable tcc to database: table tcc_climate has no column named index
+root - ERROR - Error writing variable rh to database: table rh_climate has no column named index
+root - ERROR - Error writing variable 2t to database: table 2t_climate has no column named index
+root - ERROR - Error writing variable 2d to database: table 2d_climate has no column named index
+root - ERROR - Error writing variable 10v to database: table 10v_climate has no column named index
+root - ERROR - Error writing variable 10u to database: table 10u_climate has no column named index
