@@ -64,6 +64,7 @@ with sqlite3.connect('data.db') as conn:
         except Exception as e:
             logging.error('Error opening dataset for variable %s: %s', var, e)
 
+
     #calculate relative humidity from temperature and dewpoint temperature
     def rh(dewpoint, temperature):
         return 100*(np.exp((17.625*dewpoint)/(243.04+dewpoint))/np.exp((17.625*temperature)/(243.04+temperature)))
