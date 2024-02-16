@@ -2,141 +2,125 @@ import xarray as xr
 import sqlite3
 import pandas as pd
 import numpy as np
-import dask
 import dask.dataframe as dd
 import logging
 
 #Set up logging
 logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
-#
-#List of NetCDF files with predicted climate data
-files = [('src/data/prediction_data/eastward_near_surface_wind-ssp2_4_5_2016_2046.nc', 'u_wind'),
-         ('src/data/prediction_data/northward_near_surface_wind-ssp2_4_5_2016_2046.nc', 'v_wind'),
-         ('src/data/prediction_data/precipitation-ssp2_4_5_2016_2046.nc', 'precipitation'),
-         ('src/data/prediction_data/near_surface_relative_humidity-ssp2_4_5_2016_2046.nc', 'relative_humidity'),
-         ('src/data/prediction_data/near_surface_air_temperature-ssp2_4_5_2016_2046.nc', 'temperature')
-         ]
+######################
+#Open grib file with past data, prepare it and write it to data.db
 
-# Initialize an empty DataFrame
-df_all = pd.DataFrame()
+filename = "src/data/past_climate.grib"
+#names of the variables as saved in the xarrays within the grib file
+variables = ['tp', 'tcc',  '2t','2d','10v', '10u'] 
+#empty list, append all opened and prepared xarray datasets
+past_ds_list = []
 
 
-for file, variable in files:
+
+for var in variables:
+    if var == 'tp':
+        #open total precipitation from grib file
+        ds_tp = xr.open_dataset(filename, engine='cfgrib', backend_kwargs={'filter_by_keys': {'shortName': var}})
+        
+        #standardize tp to make it in the same format as the other variables 
+        # Flatten the 'valid_time' coordinate from 2D to 1D
+        ds_tp['valid_time'] = ds_tp['valid_time'].values.flatten()
+        
+        # Stack the 'time' and 'step' dimensions of the 'tp' variable into a single new dimension called 'total_time'
+        ds_tp['tp'] = ds_tp['tp'].stack(total_time=('time', 'step'))
+        
+        # Assign the flattened 'valid_time' data to the 'total_time' coordinate
+        ds_tp.coords["valid_time"] = ("total_time", ds_tp['valid_time'].data)
+        
+        # Swap the 'total_time' dimension with the 'valid_time' dimension
+        ds_tp['tp'] = ds_tp['tp'].swap_dims({'total_time': 'valid_time'})
+        
+        # Drop the 'time', 'step', 'number', and 'surface' dimensions/variables
+        ds_tp_dropped = ds_tp.drop_dims(['time', 'step'])
+        ds_tp_dropped = ds_tp_dropped.drop_vars(['number', 'surface'])
+        
+        # Rename the 'valid_time' dimension to 'time' in 'tp_dropped' and assign the result back to 'datasets['tp']'
+        ds_tp_dropped = ds_tp_dropped.rename({'valid_time' : 'time'})
+        
+        # Drop all NA values in the 'time' dimension of 'datasets['tp']' and assign the result back to 'datasets['tp']'
+        ds_tp_dropped = ds_tp_dropped.dropna(dim='time', how='all')
+        
+        # Reorder the dimensions of 'datasets['tp']' to have 'time' as the first dimension
+        ds_tp_dropped = ds_tp_dropped.transpose('time', 'latitude', 'longitude')
+        
+        #modify time by substracting 1 h, in order to use the same format as the other variables
+        ds_tp_dropped['time'] = ds_tp_dropped['time'] - np.timedelta64(1, 'h')
+
+        
+        #eppend to dataset list
+        past_ds_list.append(ds_tp_dropped)     
+        
+    else:
+        #open the rest of the datasets and append them to the list
+        ds_past = xr.open_dataset(filename, engine='cfgrib', backend_kwargs={'filter_by_keys': {'shortName': var}})
+
+        #get rid of unneeded coordinates to minimize the final table
+        ds_past_dropped = ds_past.reset_coords(['valid_time', 'step', 'number', 'surface'], drop = True)
+
+        
+        past_ds_list.append(ds_past_dropped)
+
+#merge all datasets in past_ds_list into one. All duplicate cols like lat and lons are merged, end result only has them once
+merged_ds_past = xr.merge(past_ds_list)
+
+#convert dxarray dataset to pandas dataframe
+past_df = merged_ds_past.to_dataframe().reset_index()
+
+#write dataframe to data.db database
+with sqlite3.connect('data.db') as conn:
+    past_df.to_sql('past_data', conn, if_exists='replace', index=False)
+
+print('Prediction_data table created successfully.')
+
+
+##########################
+#Open prediction data from the netcdf files and wrtie it to the database
+
+
+#get a list of paths of all the netcdf files containing the different variables.
+
+nc_folder = 'src/data/prediction_data'
+nc_files = [file_path for file_path in glob.glob(os.path.join(nc_folder, '*.nc'))]
+
+# Initialize an empty list to append the single datasets to
+pred_ds_list = []
+
+# loop trough the files and load the datasets 
+for file in nc_files:
+    #try except block needed for log file
     try:
         # Load NetCDF file
-        ds = xr.open_dataset(file)
-        ds = ds.drop_vars(['lat_bnds', 'lon_bnds', 'time_bnds'])
+        pred_ds = xr.open_dataset(file)
 
-        # Convert to DataFrame and reset index to flatten the data
-        df = ds.to_dataframe().reset_index()
-
-        # Add a column for the variable name
-        df['variable'] = variable + '_prediction'
-
-        # Concatenate the DataFrame with the main DataFrame
-        df_all = pd.concat([df_all, df])
-        df_all['lon'] = df_all['lon'].apply(lambda x: x-360 if x > 180 else x)
+        #append the arrays to the list
+        pred_ds_list.append(pred_ds)
+        
     except Exception as e:
-        logging.error('Error processing file %s: %s', file, e)
+        logging.error('Error opening dataset for variable %s: %s', e)
 
-# Create a SQLite database    
+# merge all datasets into one, things like lat, lon and time, that are the same for all, are merged, variable values are kept. 
+# compat = override needed for height, a dimension present only in some datasets. Ignores it if it is not present 
+pred_ds_merged = xr.merge(pred_ds_list, compat='override')
+
+
+# drop unneeded bnds dimension and all variables it includes
+pred_ds_dropped = pred_ds_merged.drop_dims('bnds')
+pred_ds_dropped = pred_ds_dropped.reset_coords(drop = True)
+
+# convert xr dataset to pd dataframe
+pred_df = pred_ds_dropped.to_dataframe().reset_index()
+
+# Adjust longitudes to have the same format as the past dataset
+pred_df['lon'] = pred_df['lon'].apply(lambda x: x - 360 if x > 180 else x)
+
+# Store the prediction dataframe in SQLite table 
 with sqlite3.connect('data.db') as conn:
-    # Store the prediction dataframe in SQLite table
-    df_all.to_sql('prediction_data', conn, if_exists='replace', index=False)
-
-    print('Prediction_data table created successfully.')
-
-    # Open the GRIB file with past data
-    print('opening GRIB file')
-    filename = "src/data/past_climate.grib"
-    variables = ['tp', 'tcc', 'rh', '2t','2d','10v', '10u'] 
-    datasets = {}
-
-    # Set up Dask to use a single thread
-    dask.config.set(scheduler='single-threaded')
-
-    for var in variables:
-        try:
-            # Open the GRIB file with chunks
-            ds = xr.open_dataset(filename, engine='cfgrib', backend_kwargs={'filter_by_keys': {'shortName': var}}, chunks={'time': 10})
-            datasets[var] = ds
-        except Exception as e:
-            logging.error('Error opening dataset for variable %s: %s', var, e)
-
-
-    #calculate relative humidity from temperature and dewpoint temperature
-    def rh(dewpoint, temperature):
-        return 100*(np.exp((17.625*dewpoint)/(243.04+dewpoint))/np.exp((17.625*temperature)/(243.04+temperature)))
-
-    rh_all = rh(datasets['2d']['d2m']-273.15, datasets['2t']['t2m']-273.15)
-    datasets['rh'] = xr.Dataset({'rh': xr.DataArray(rh_all, coords=datasets['2d']['d2m'].coords, dims=datasets['2d']['d2m'].dims)})
-
-    #standardize tp to make it in the same format as the other variables 
-    # Flatten the 'valid_time' coordinate from 2D to 1D
-    datasets['tp']['valid_time'] = datasets['tp']['valid_time'].values.flatten()
-
-    # Stack the 'time' and 'step' dimensions of the 'tp' variable into a single new dimension called 'total_time'
-    datasets['tp']['tp'] = datasets['tp']['tp'].stack(total_time=('time', 'step'))
-
-    # Assign the flattened 'valid_time' data to the 'total_time' coordinate
-    datasets['tp'].coords["valid_time"] = ("total_time", datasets['tp']['valid_time'].data)
-
-    # Swap the 'total_time' dimension with the 'valid_time' dimension
-    datasets['tp'] = datasets['tp'].swap_dims({'total_time': 'valid_time'})
-
-    # Drop the 'time', 'step', 'number', and 'surface' dimensions from 'tp_single_time_and_step' and assign the result to 'tp_dropped'
-    tp_dropped = datasets['tp'].drop(['time','step','number','surface'])
-
-    # Rename the 'valid_time' dimension to 'time' in 'tp_dropped' and assign the result back to 'datasets['tp']'
-    datasets['tp'] = tp_dropped.rename({'valid_time': 'time'})
-
-    # Drop all NA values in the 'time' dimension of 'datasets['tp']' and assign the result back to 'datasets['tp']'
-    datasets['tp'] = datasets['tp'].dropna(dim='time', how='all')
-
-    #TODO:check if the transpose works correctly
-    # Reorder the dimensions of 'datasets['tp']' to have 'time' as the first dimension
-    datasets['tp'] = datasets['tp'].transpose('time', 'latitude', 'longitude')
-
-    print('writing to database')
-    for var, ds in datasets.items():
-        try:
-            print('processing', var)
-            with dask.config.set(**{'array.slicing.split_large_chunks': True}):
-            # Convert the Dataset to a DataFrame and reset the index
-                df = ds.to_dask_dataframe().reset_index()
-
-            #print(df.dtypes)
-            #print(len(df))
-            # Convert the DataFrame to a Dask DataFrame
-            #df = dd.from_pandas(df, npartitions=4)  
-
-            df['variable'] = var
-            print('writing', var, 'to database')
-
-            # Write the DataFrame to the SQLite database in chunks
-            # Use the variable name as the table name
-            # Write the DataFrame to the SQLite database in chunks
-            # Use the variable name as the table name
-            print('Number of partitions:', df.npartitions)
-            print('Size of DataFrame:', len(df))
-            for i in range(df.npartitions):
-                # Compute the partition to load the data into memory and convert it to a Pandas DataFrame
-                partition_pd = df.get_partition(i).compute()
-                #print(type(partition_pd))
-                #print(type(partition_pd.empty)) 
-                    
-                # Convert timedelta columns to strings
-                for col in partition_pd.columns:
-                    if partition_pd[col].dtype == 'timedelta64[ns]':
-                        partition_pd[col] = partition_pd[col].astype(str)
-                # Check if the DataFrame is empty
-                if not partition_pd.empty:
-                    # Write the DataFrame to the database
-                    partition_pd.to_sql(var + "_climate", conn, if_exists='append', index=False)
-                    # Commit the transaction to ensure the data is saved to the database
-                    conn.commit()
-        except Exception as e:
-            logging.error('Error writing variable %s to database: %s', var, e)
-
-print('Database created successfully.')
+    pred_df.to_sql('prediction_data', conn, if_exists='replace', index=False)
+    

@@ -20,6 +20,27 @@ def compute_climatology(lat, lon, db_file='data.db'):
     coordinates = ['latitude', 'longitude', 'time']
     coordinates_tp = ['latitude', 'longitude', 'time', 'step']
 
+    query = f"""
+            SELECT *
+            FROM past_data
+            WHERE latitude BETWEEN {lat - 1} AND {lat + 1}
+            AND longitude BETWEEN {lon - 1} AND {lon + 1}
+            """
+    
+    
+    # put query result into a pandas dataframe
+    past_df = pd.read_sql_query(query, conn)
+    #TODO Maybe do this before, when creating database?
+    # Convert the 'time' coordinate to datetime64
+    past_df['time'] = pd.to_datetime(df['time'])
+
+    #TODO qua convertiamo a un xarray? A sto punto non ci converrebbe fare il database con xarray direttamente? amesso che sia possibile 
+    datasets[var] = xr.Dataset.from_dataframe(df.set_index(coordinates_tp))
+
+    
+    
+    
+    
     #Loop trough the tables with SQL querys in order to ectract the needed data for specified lat and lon values
     for var in tables_and_column:
         #treat tp differently as it also needs the col steps, which the other variables dont need. Minimize number of imported cols for speed
@@ -37,6 +58,7 @@ def compute_climatology(lat, lon, db_file='data.db'):
             df = pd.read_sql_query(query, conn)
             # Convert the 'time' coordinate to datetime64
             df['time'] = pd.to_datetime(df['time'])
+            
             datasets[var] = xr.Dataset.from_dataframe(df.set_index(coordinates_tp))
 
         else:     
